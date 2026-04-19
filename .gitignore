@@ -30,3 +30,6 @@ __pycache__/
 *.log
 *.sqlite
 eval/results/
+
+#.claude
+.claude/
