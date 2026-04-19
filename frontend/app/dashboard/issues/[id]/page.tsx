@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
+import clsx from "clsx";
 import { api, ApiError } from "@/lib/api-client";
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/Badge";
@@ -23,6 +24,8 @@ type IssueDetail = {
   labels: string[];
   comments: number;
   bounty_usd: number | null;
+  score?: number | null;
+  reason?: string | null;
   repo: {
     name: string;
     description: string | null;
@@ -66,6 +69,14 @@ const DIFFICULTY_TONE: Record<
   hard: "red",
 };
 
+function matchTone(score?: number | null) {
+  if (score == null) return "text-neutral-600";
+  if (score >= 90) return "text-violet-700";
+  if (score >= 80) return "text-emerald-600";
+  if (score >= 70) return "text-sky-600";
+  return "text-neutral-600";
+}
+
 export default function IssueDetailPage({
   params,
 }: {
@@ -100,11 +111,7 @@ export default function IssueDetailPage({
   }
 
   useEffect(() => {
-    api<Me>("/users/me")
-      .then(setMe)
-      .catch(() => {
-        /* navbar handles missing user gracefully */
-      });
+    api<Me>("/users/me").then(setMe).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -129,56 +136,79 @@ export default function IssueDetailPage({
   }, [id, issue]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-surface">
       <Navbar user={me} />
 
-      <main className="mx-auto max-w-4xl px-6 py-8 sm:py-10">
+      <main className="mx-auto max-w-6xl px-6 py-8 sm:py-10">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs text-neutral-400 transition hover:text-neutral-100"
+          className="inline-flex items-center gap-1.5 text-xs text-neutral-500 transition hover:text-neutral-900"
         >
           <ArrowLeftIcon className="h-3.5 w-3.5" />
           Back to feed
         </Link>
 
         {error && (
-          <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {!issue && !error && (
-          <div className="mt-6 h-40 rounded-2xl border border-surface-border bg-surface-raised shimmer" />
+          <div className="mt-6 h-40 rounded-2xl border border-surface-border bg-white shimmer" />
         )}
 
         {issue && (
           <>
             {/* Issue header */}
-            <header className="mt-6 rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-400">
-                <span className="font-mono text-neutral-300">
+            <header className="mt-4">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
+                <span className="font-mono text-neutral-700">
                   {issue.repo.name}
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <StarIcon className="h-3 w-3 text-amber-400" />
-                  {issue.repo.stars.toLocaleString()}
+                  <StarIcon className="h-3 w-3 text-amber-500" />
+                  {(issue.repo.stars >= 1000
+                    ? `${Math.round(issue.repo.stars / 1000)}k`
+                    : issue.repo.stars.toLocaleString())}
                 </span>
-                {issue.repo.language && (
-                  <span className="inline-flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-                    {issue.repo.language}
-                  </span>
-                )}
-                {issue.repo.is_curated && (
-                  <Badge tone="accent">curated</Badge>
-                )}
+                <span className="font-mono text-neutral-500">
+                  #{issue.number}
+                </span>
+                {issue.labels.slice(0, 4).map((l) => (
+                  <Badge key={l}>{l}</Badge>
+                ))}
+                {issue.bounty_usd ? (
+                  <Badge tone="green">${issue.bounty_usd} bounty</Badge>
+                ) : null}
               </div>
 
-              <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-neutral-900 sm:text-[28px]">
                 {issue.title}
               </h1>
 
               <div className="mt-4 flex flex-wrap items-center gap-3">
+                {issue.score != null && (
+                  <div className="inline-flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-3 py-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-700">
+                      match
+                    </span>
+                    <span
+                      className={clsx(
+                        "font-mono text-lg font-semibold tabular-nums",
+                        matchTone(issue.score),
+                      )}
+                    >
+                      {issue.score}
+                    </span>
+                  </div>
+                )}
+                {issue.reason && (
+                  <p className="text-sm text-neutral-600">
+                    <span className="text-neutral-400">Why you · </span>
+                    {issue.reason}
+                  </p>
+                )}
                 <a href={issue.url} target="_blank" rel="noreferrer">
                   <Button
                     variant="secondary"
@@ -188,78 +218,164 @@ export default function IssueDetailPage({
                     View on GitHub
                   </Button>
                 </a>
-                {issue.bounty_usd ? (
-                  <Badge tone="green">${issue.bounty_usd} bounty</Badge>
-                ) : null}
-                {issue.labels.slice(0, 6).map((l) => (
-                  <Badge key={l}>{l}</Badge>
-                ))}
               </div>
             </header>
 
-            {/* AI plan */}
-            <section className="mt-6">
-              <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-                <SparklesIcon className="h-3.5 w-3.5 text-violet-300" />
-                AI fix plan
-              </div>
-
-              {loadingUnderstand && (
-                <div className="rounded-2xl border border-dashed border-surface-border bg-surface-raised/60 p-6 text-sm text-neutral-500">
-                  Reading the repo and drafting a plan… (usually 10–30s, cached
-                  after)
+            {/* Two-column: description + AI fix plan */}
+            <div className="mt-6 grid gap-5 lg:grid-cols-2">
+              <section className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                  Issue description
                 </div>
-              )}
+                {issue.body ? (
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-neutral-800">
+                    {issue.body}
+                  </p>
+                ) : (
+                  <p className="mt-3 text-sm text-neutral-500">
+                    No description provided.
+                  </p>
+                )}
+              </section>
 
-              {understanding && (
-                <div className="space-y-5 rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card animate-fade-in">
-                  <div>
+              <section className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-violet-700">
+                    <SparklesIcon className="h-3.5 w-3.5" />
+                    AI fix plan
+                  </div>
+                  {understanding && (
                     <Badge tone={DIFFICULTY_TONE[understanding.difficulty]}>
                       {understanding.difficulty}
                     </Badge>
-                    <p className="mt-3 leading-relaxed text-neutral-200">
-                      {understanding.plain_summary}
-                    </p>
+                  )}
+                </div>
+
+                {loadingUnderstand && (
+                  <p className="mt-4 text-sm text-neutral-500">
+                    Reading the repo and drafting a plan… (usually 10–30s,
+                    cached after).
+                  </p>
+                )}
+
+                {understanding && (
+                  <div className="mt-4 space-y-5 animate-fade-in">
+                    {understanding.plain_summary && (
+                      <p className="text-sm leading-relaxed text-neutral-700">
+                        {understanding.plain_summary}
+                      </p>
+                    )}
+
+                    {understanding.approach.length > 0 && (
+                      <PlanSection title="Approach">
+                        <ol className="list-decimal space-y-1.5 pl-5 text-sm text-neutral-700">
+                          {understanding.approach.map((s, i) => (
+                            <li key={i}>{s}</li>
+                          ))}
+                        </ol>
+                      </PlanSection>
+                    )}
+
+                    {understanding.likely_files.length > 0 && (
+                      <PlanSection title="Key files">
+                        <ul className="space-y-1.5 text-sm text-neutral-700">
+                          {understanding.likely_files.map((f) => (
+                            <li
+                              key={f}
+                              className="flex items-start gap-2 leading-relaxed"
+                            >
+                              <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-neutral-400" />
+                              <code className="rounded-md bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-neutral-800">
+                                {f}
+                              </code>
+                            </li>
+                          ))}
+                        </ul>
+                      </PlanSection>
+                    )}
+
+                    {understanding.gotchas.length > 0 && (
+                      <PlanSection title="Watch-outs">
+                        <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-700">
+                          {understanding.gotchas.map((g, i) => (
+                            <li key={i}>{g}</li>
+                          ))}
+                        </ul>
+                      </PlanSection>
+                    )}
+
+                    {understanding.clarifying_questions.length > 0 && (
+                      <PlanSection title="Ask the maintainer">
+                        <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-700">
+                          {understanding.clarifying_questions.map((q, i) => (
+                            <li key={i}>{q}</li>
+                          ))}
+                        </ul>
+                      </PlanSection>
+                    )}
                   </div>
+                )}
+              </section>
+            </div>
 
-                  {understanding.approach.length > 0 && (
-                    <PlanSection title="Approach">
-                      <ol className="list-decimal space-y-1.5 pl-5 text-sm text-neutral-300">
-                        {understanding.approach.map((s, i) => (
-                          <li key={i}>{s}</li>
-                        ))}
-                      </ol>
-                    </PlanSection>
+            {/* PR Coach */}
+            <section className="mt-6 rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+              <div className="mb-3 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-violet-700">
+                <SparklesIcon className="h-3.5 w-3.5" />
+                PR coach
+              </div>
+              <p className="text-sm text-neutral-500">
+                Describe what you changed in plain English. The coach drafts a
+                commit + PR description matching this repo&apos;s house style.
+                Nothing is submitted to GitHub.
+              </p>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="e.g. Fixed the null check in parse_config so missing env vars fall back to defaults instead of crashing…"
+                rows={5}
+                className="mt-4 w-full resize-y rounded-lg border border-surface-border bg-surface-muted px-3 py-2 font-mono text-sm text-neutral-900 outline-none transition focus:border-violet-400"
+              />
+              <div className="mt-3 flex items-center gap-3">
+                <Button
+                  size="sm"
+                  onClick={runCoach}
+                  loading={loadingCoach}
+                  disabled={!draft.trim()}
+                >
+                  Draft PR
+                </Button>
+                {coachError && (
+                  <span className="text-xs text-red-600">{coachError}</span>
+                )}
+              </div>
+
+              {coach && (
+                <div className="mt-5 space-y-5 border-t border-surface-border pt-5 animate-fade-in">
+                  <CoachField label="Commit title" value={coach.commit_title} />
+                  {coach.commit_body && (
+                    <CoachField
+                      label="Commit body"
+                      value={coach.commit_body}
+                      multiline
+                    />
                   )}
+                  <CoachField label="PR title" value={coach.pr_title} />
+                  <CoachField label="PR body" value={coach.pr_body} multiline />
 
-                  {understanding.likely_files.length > 0 && (
-                    <PlanSection title="Likely files to touch">
-                      <ul className="flex flex-wrap gap-1.5">
-                        {understanding.likely_files.map((f) => (
-                          <li key={f}>
-                            <code className="rounded-md border border-surface-border bg-surface-muted px-2 py-1 font-mono text-xs text-neutral-300">
-                              {f}
-                            </code>
-                          </li>
+                  {coach.checklist.length > 0 && (
+                    <PlanSection title="Before you open the PR">
+                      <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-700">
+                        {coach.checklist.map((c, i) => (
+                          <li key={i}>{c}</li>
                         ))}
                       </ul>
                     </PlanSection>
                   )}
-
-                  {understanding.gotchas.length > 0 && (
-                    <PlanSection title="Gotchas">
-                      <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-300">
-                        {understanding.gotchas.map((g, i) => (
-                          <li key={i}>{g}</li>
-                        ))}
-                      </ul>
-                    </PlanSection>
-                  )}
-
-                  {understanding.clarifying_questions.length > 0 && (
-                    <PlanSection title="Ask the maintainer">
-                      <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-300">
-                        {understanding.clarifying_questions.map((q, i) => (
+                  {coach.questions_for_contributor.length > 0 && (
+                    <PlanSection title="Open questions">
+                      <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-700">
+                        {coach.questions_for_contributor.map((q, i) => (
                           <li key={i}>{q}</li>
                         ))}
                       </ul>
@@ -268,88 +384,6 @@ export default function IssueDetailPage({
                 </div>
               )}
             </section>
-
-            {/* PR Coach */}
-            <section className="mt-6">
-              <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-                <SparklesIcon className="h-3.5 w-3.5 text-violet-300" />
-                PR coach
-              </div>
-              <div className="space-y-4 rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
-                <p className="text-sm text-neutral-400">
-                  Describe what you changed in plain English. The coach drafts a
-                  commit + PR description matching this repo&apos;s house style.
-                  Nothing is submitted to GitHub.
-                </p>
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="e.g. Fixed the null check in parse_config so missing env vars fall back to defaults instead of crashing…"
-                  rows={5}
-                  className="w-full resize-y rounded-lg border border-surface-border bg-surface-muted px-3 py-2 font-mono text-sm text-neutral-200 outline-none transition focus:border-violet-400/50"
-                />
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={runCoach}
-                    loading={loadingCoach}
-                    disabled={!draft.trim()}
-                  >
-                    Draft PR
-                  </Button>
-                  {coachError && (
-                    <span className="text-xs text-red-300">{coachError}</span>
-                  )}
-                </div>
-
-                {coach && (
-                  <div className="space-y-5 border-t border-surface-border pt-5 animate-fade-in">
-                    <CoachField label="Commit title" value={coach.commit_title} />
-                    {coach.commit_body && (
-                      <CoachField
-                        label="Commit body"
-                        value={coach.commit_body}
-                        multiline
-                      />
-                    )}
-                    <CoachField label="PR title" value={coach.pr_title} />
-                    <CoachField label="PR body" value={coach.pr_body} multiline />
-
-                    {coach.checklist.length > 0 && (
-                      <PlanSection title="Before you open the PR">
-                        <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-300">
-                          {coach.checklist.map((c, i) => (
-                            <li key={i}>{c}</li>
-                          ))}
-                        </ul>
-                      </PlanSection>
-                    )}
-                    {coach.questions_for_contributor.length > 0 && (
-                      <PlanSection title="Open questions">
-                        <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-300">
-                          {coach.questions_for_contributor.map((q, i) => (
-                            <li key={i}>{q}</li>
-                          ))}
-                        </ul>
-                      </PlanSection>
-                    )}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* Original body */}
-            {issue.body && (
-              <section className="mt-6">
-                <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-                  Original issue
-                </div>
-                <pre className="overflow-x-auto whitespace-pre-wrap rounded-2xl border border-surface-border bg-surface-raised p-5 font-mono text-sm leading-relaxed text-neutral-300 shadow-card">
-                  {issue.body}
-                </pre>
-              </section>
-            )}
           </>
         )}
       </main>
@@ -373,28 +407,26 @@ function CoachField({
       await navigator.clipboard.writeText(value);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* clipboard may be blocked; user can still select text */
-    }
+    } catch {}
   }
 
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-neutral-100">{label}</h3>
+        <h3 className="text-sm font-semibold text-neutral-900">{label}</h3>
         <button
           onClick={copy}
-          className="text-xs text-neutral-400 transition hover:text-violet-300"
+          className="text-xs text-neutral-500 transition hover:text-violet-700"
         >
           {copied ? "copied" : "copy"}
         </button>
       </div>
       {multiline ? (
-        <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-surface-border bg-surface-muted p-3 font-mono text-xs leading-relaxed text-neutral-200">
+        <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-surface-border bg-surface-muted p-3 font-mono text-xs leading-relaxed text-neutral-800">
           {value}
         </pre>
       ) : (
-        <code className="block rounded-lg border border-surface-border bg-surface-muted px-3 py-2 font-mono text-xs text-neutral-200">
+        <code className="block rounded-lg border border-surface-border bg-surface-muted px-3 py-2 font-mono text-xs text-neutral-800">
           {value}
         </code>
       )}
@@ -410,8 +442,8 @@ function PlanSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-t border-surface-border pt-4 first:border-0 first:pt-0">
-      <h3 className="mb-2 text-sm font-semibold text-neutral-100">{title}</h3>
+    <div>
+      <h3 className="mb-2 text-sm font-semibold text-neutral-900">{title}</h3>
       {children}
     </div>
   );

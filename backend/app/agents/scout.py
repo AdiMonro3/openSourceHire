@@ -83,6 +83,7 @@ async def rank_issues_for_user(
         select(Issue, Repo)
         .join(Repo, Issue.repo_id == Repo.id)
         .where(Issue.state == "OPEN")
+        .where(Repo.is_anti_ai.is_(False))
         .order_by(Issue.embedding.cosine_distance(skill.embedding))
         .limit(prefilter)
     )

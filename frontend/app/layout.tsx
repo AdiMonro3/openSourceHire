@@ -15,14 +15,14 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OpenSourceHire — Ship code, get hired.",
+  title: "OpenSourceHire — Get hired for what you ship.",
   description:
-    "Turn open-source contributions into verifiable income and hiring signal.",
+    "AI-ranked open-source issues, matched to what you've actually shipped.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable} dark`}>
+    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
       <body className="min-h-screen font-sans">{children}</body>
     </html>
   );

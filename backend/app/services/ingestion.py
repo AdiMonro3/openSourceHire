@@ -16,9 +16,10 @@ from typing import Any
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.integrations.github import fetch_repo_beginner_issues
+from app.integrations.github import fetch_repo_beginner_issues, fetch_repo_readme
 from app.models import Issue, Repo
 from app.services.embeddings import embed_texts
+from app.services.policy import detect_anti_ai, is_blocklisted
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,12 @@ def reputation_score(stars: int, is_curated: bool) -> float:
     return round(base, 2)
 
 
-def _upsert_repo(db: Session, repo_node: dict[str, Any], is_curated: bool) -> Repo:
+def _upsert_repo(
+    db: Session,
+    repo_node: dict[str, Any],
+    is_curated: bool,
+    is_anti_ai: bool = False,
+) -> Repo:
     stars = repo_node.get("stargazerCount", 0) or 0
     topics = [
         t["topic"]["name"]
@@ -62,6 +68,7 @@ def _upsert_repo(db: Session, repo_node: dict[str, Any], is_curated: bool) -> Re
         "topics": topics,
         "reputation_score": reputation_score(stars, is_curated),
         "is_curated": is_curated,
+        "is_anti_ai": is_anti_ai,
         "last_scanned_at": datetime.now(timezone.utc),
     }
     stmt = pg_insert(Repo).values(**values)
@@ -76,6 +83,7 @@ def _upsert_repo(db: Session, repo_node: dict[str, Any], is_curated: bool) -> Re
             "topics": stmt.excluded.topics,
             "reputation_score": stmt.excluded.reputation_score,
             "is_curated": stmt.excluded.is_curated,
+            "is_anti_ai": stmt.excluded.is_anti_ai,
             "last_scanned_at": stmt.excluded.last_scanned_at,
         },
     ).returning(Repo.id)
@@ -134,6 +142,19 @@ def _upsert_issue(
     db.execute(stmt)
 
 
+async def _check_anti_ai(token: str, name_with_owner: str) -> bool:
+    if is_blocklisted(name_with_owner):
+        return True
+    try:
+        readme = await fetch_repo_readme(token, name_with_owner)
+    except Exception:
+        # README fetch is best-effort. If it fails we fall back to the
+        # blocklist check only — better to under-block than fail ingestion.
+        logger.exception("README fetch failed for %s", name_with_owner)
+        readme = None
+    return detect_anti_ai(name_with_owner, readme)
+
+
 async def ingest_repo(
     db: Session,
     token: str,
@@ -150,7 +171,8 @@ async def ingest_repo(
             "total_count": search.get("issueCount", 0) or 0,
         }
 
-    repo = _upsert_repo(db, nodes[0]["repository"], is_curated)
+    anti_ai = await _check_anti_ai(token, name_with_owner)
+    repo = _upsert_repo(db, nodes[0]["repository"], is_curated, is_anti_ai=anti_ai)
     embed_inputs = [_issue_embed_input(n) for n in nodes]
     embeddings = await embed_texts(embed_inputs, input_type="document")
     for node, emb in zip(nodes, embeddings, strict=True):
@@ -161,6 +183,7 @@ async def ingest_repo(
         "repo": name_with_owner,
         "issues_indexed": len(nodes),
         "total_count": search.get("issueCount", 0) or 0,
+        "is_anti_ai": anti_ai,
     }
 
 

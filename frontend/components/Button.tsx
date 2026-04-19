@@ -18,13 +18,13 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-accent-gradient text-white shadow-[0_1px_0_0_rgba(255,255,255,0.2)_inset,0_6px_20px_-8px_rgba(139,92,246,0.6)] hover:brightness-110 hover:shadow-glow",
+    "bg-violet-600 text-white shadow-[0_1px_0_0_rgba(255,255,255,0.25)_inset,0_4px_14px_-4px_rgba(124,58,237,0.55)] hover:bg-violet-700",
   secondary:
-    "border border-surface-border bg-surface-raised text-neutral-100 hover:bg-surface-hover hover:border-neutral-700",
+    "border border-surface-border bg-white text-neutral-900 hover:bg-surface-hover hover:border-neutral-300",
   ghost:
-    "text-neutral-300 hover:text-neutral-50 hover:bg-surface-hover",
+    "text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100",
   danger:
-    "bg-red-500/10 text-red-300 border border-red-500/30 hover:bg-red-500/20",
+    "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100",
 };
 
 const sizes: Record<Size, string> = {
@@ -55,7 +55,14 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
       {...rest}
     >
       {loading ? (
-        <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        <span
+          className={clsx(
+            "inline-block h-3.5 w-3.5 animate-spin rounded-full border-2",
+            variant === "primary"
+              ? "border-white/40 border-t-white"
+              : "border-neutral-300 border-t-neutral-700",
+          )}
+        />
       ) : (
         leadingIcon
       )}

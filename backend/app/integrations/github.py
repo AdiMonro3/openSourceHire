@@ -117,6 +117,67 @@ async def fetch_viewer_profile(token: str, repo_count: int = 30) -> dict[str, An
     return data["data"]["viewer"]
 
 
+VIEWER_PORTFOLIO_QUERY = """
+query ViewerPortfolio($prCount: Int = 30) {
+  viewer {
+    login
+    name
+    bio
+    location
+    avatarUrl
+    followers { totalCount }
+    repositories(ownerAffiliations: OWNER, isFork: false) { totalCount }
+    contributionsCollection {
+      contributionCalendar {
+        totalContributions
+        weeks {
+          contributionDays {
+            date
+            contributionCount
+            color
+          }
+        }
+      }
+    }
+    pullRequests(
+      first: $prCount
+      states: MERGED
+      orderBy: { field: CREATED_AT, direction: DESC }
+    ) {
+      totalCount
+      nodes {
+        title
+        url
+        mergedAt
+        additions
+        deletions
+        changedFiles
+        repository {
+          nameWithOwner
+          stargazerCount
+          primaryLanguage { name }
+        }
+      }
+    }
+  }
+}
+"""
+
+
+VIEWER_PORTFOLIO_TTL = 60 * 30  # 30m — contributions calendar refreshes hourly upstream.
+
+
+async def fetch_viewer_portfolio(token: str, pr_count: int = 30) -> dict[str, Any]:
+    """Merged-PR list + contribution heatmap + headline stats for the dashboard."""
+    client = GitHubClient(token)
+    data = await client.graphql(
+        VIEWER_PORTFOLIO_QUERY,
+        {"prCount": pr_count},
+        ttl=VIEWER_PORTFOLIO_TTL,
+    )
+    return data["data"]["viewer"]
+
+
 REPO_ISSUES_QUERY = """
 query RepoIssues($q: String!, $first: Int = 30) {
   search(query: $q, type: ISSUE, first: $first) {

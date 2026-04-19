@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.skill_graph import build_skill_profile
 from app.deps import get_current_user, get_db
+from app.integrations.github import fetch_viewer_portfolio
 from app.models import SkillProfileRow, User
 from app.services.embeddings import embed_text
 
@@ -51,3 +52,77 @@ async def refresh_profile(
         row.embedding = embedding
     db.commit()
     return profile
+
+
+@router.get("/me/portfolio")
+async def get_portfolio(user: User = Depends(get_current_user)) -> dict:
+    """Merged-PR list, contribution heatmap, and headline stats from GitHub."""
+    viewer = await fetch_viewer_portfolio(user.access_token, pr_count=30)
+
+    pr_nodes = ((viewer.get("pullRequests") or {}).get("nodes") or [])
+    merged_prs = []
+    additions_total = 0
+    deletions_total = 0
+    repo_set: set[str] = set()
+    for pr in pr_nodes:
+        repo = pr.get("repository") or {}
+        repo_name = repo.get("nameWithOwner")
+        if not repo_name:
+            continue
+        repo_set.add(repo_name)
+        additions_total += int(pr.get("additions") or 0)
+        deletions_total += int(pr.get("deletions") or 0)
+        merged_prs.append(
+            {
+                "title": pr.get("title"),
+                "url": pr.get("url"),
+                "merged_at": pr.get("mergedAt"),
+                "additions": pr.get("additions") or 0,
+                "deletions": pr.get("deletions") or 0,
+                "changed_files": pr.get("changedFiles") or 0,
+                "repo": {
+                    "name": repo_name,
+                    "stars": repo.get("stargazerCount") or 0,
+                    "language": (repo.get("primaryLanguage") or {}).get("name"),
+                },
+            }
+        )
+
+    calendar = (
+        ((viewer.get("contributionsCollection") or {}).get("contributionCalendar"))
+        or {}
+    )
+    weeks = []
+    for week in calendar.get("weeks") or []:
+        weeks.append(
+            [
+                {
+                    "date": d.get("date"),
+                    "count": d.get("contributionCount") or 0,
+                }
+                for d in (week.get("contributionDays") or [])
+            ]
+        )
+
+    return {
+        "user": {
+            "login": viewer.get("login"),
+            "name": viewer.get("name"),
+            "bio": viewer.get("bio"),
+            "location": viewer.get("location"),
+            "avatar_url": viewer.get("avatarUrl"),
+            "followers": (viewer.get("followers") or {}).get("totalCount") or 0,
+            "repos": (viewer.get("repositories") or {}).get("totalCount") or 0,
+        },
+        "stats": {
+            "merged_prs": (viewer.get("pullRequests") or {}).get("totalCount") or 0,
+            "lines_added": additions_total,
+            "lines_removed": deletions_total,
+            "active_repos": len(repo_set),
+        },
+        "contributions": {
+            "total": calendar.get("totalContributions") or 0,
+            "weeks": weeks,
+        },
+        "merged_prs": merged_prs,
+    }

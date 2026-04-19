@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.agents.base import call_claude, cached_text_block, parse_json
 from app.integrations.github import fetch_recent_merged_prs
 from app.models import Issue, Repo
+from app.services.policy import append_ai_disclosure
 
 COACH_SYSTEM = """You are a senior maintainer coaching an OSS contributor on their PR.
 
@@ -179,4 +180,5 @@ async def coach_pr(
 
     parsed["commit_title"] = str(parsed["commit_title"])[:120]
     parsed["commit_body"] = _truncate(str(parsed["commit_body"]), MAX_COMMIT_MSG_CHARS)
+    parsed["pr_body"] = append_ai_disclosure(str(parsed["pr_body"]))
     return parsed

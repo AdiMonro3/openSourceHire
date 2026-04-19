@@ -1,0 +1,6 @@
+# Maintainer pledge: repos whose maintainers have publicly said they do not
+# want AI-assisted contributions. These are excluded from the scout ranker
+# regardless of their README contents.
+#
+# Format: owner/repo, one per line. Comments start with #.
+# Matching is case-insensitive on the full name_with_owner.

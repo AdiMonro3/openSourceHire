@@ -5,9 +5,11 @@ import { api, ApiError } from "@/lib/api-client";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/Button";
 import { Badge } from "@/components/Badge";
-import { ProfileCard } from "@/components/ProfileCard";
-import { IssueCard, type IssueCardData } from "@/components/IssueCard";
-import { SparklesIcon } from "@/components/Icons";
+import {
+  ContributionHeatmap,
+  type CalendarWeek,
+} from "@/components/ContributionHeatmap";
+import { GitHubIcon, SparklesIcon } from "@/components/Icons";
 
 type Me = {
   id: number;
@@ -25,12 +27,49 @@ type Profile = {
   interests?: string[];
 };
 
-type Feed = { items: IssueCardData[]; count: number };
+type Portfolio = {
+  user: {
+    login: string;
+    name: string | null;
+    bio: string | null;
+    location: string | null;
+    avatar_url: string | null;
+    followers: number;
+    repos: number;
+  };
+  stats: {
+    merged_prs: number;
+    lines_added: number;
+    lines_removed: number;
+    active_repos: number;
+  };
+  contributions: { total: number; weeks: CalendarWeek[] };
+  merged_prs: {
+    title: string;
+    url: string;
+    merged_at: string | null;
+    additions: number;
+    deletions: number;
+    changed_files: number;
+    repo: { name: string; stars: number; language: string | null };
+  }[];
+};
+
+function initials(src: string) {
+  const parts = src.trim().split(/\s+/).slice(0, 2);
+  return parts.map((p) => p[0]?.toUpperCase()).join("") || "·";
+}
+
+function fmtMonth(date: string | null) {
+  if (!date) return "";
+  const d = new Date(date);
+  return d.toLocaleString("en", { month: "short", year: "numeric" });
+}
 
 export default function ProfilePage() {
   const [me, setMe] = useState<Me | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [feed, setFeed] = useState<Feed | null>(null);
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needsProfile, setNeedsProfile] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,10 +94,10 @@ export default function ProfilePage() {
         if (e instanceof ApiError && e.status === 404) setNeedsProfile(true);
         else setError(e.message ?? String(e));
       });
-    api<Feed>("/feed?limit=6")
-      .then(setFeed)
+    api<Portfolio>("/users/me/portfolio")
+      .then(setPortfolio)
       .catch(() => {
-        /* ignore — feed is supplementary on this page */
+        /* portfolio is supplementary on this page */
       });
   }, [me]);
 
@@ -71,8 +110,8 @@ export default function ProfilePage() {
       setProfile(p);
       setNeedsProfile(false);
       setError(null);
-      const f = await api<Feed>("/feed?limit=6");
-      setFeed(f);
+      const pf = await api<Portfolio>("/users/me/portfolio");
+      setPortfolio(pf);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -82,10 +121,10 @@ export default function ProfilePage() {
 
   if (!me) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-surface">
         <Navbar user={me} />
         <main className="mx-auto max-w-6xl px-6 py-10">
-          <div className="h-48 rounded-2xl border border-surface-border bg-surface-raised shimmer" />
+          <div className="h-48 rounded-2xl border border-surface-border bg-white shimmer" />
         </main>
       </div>
     );
@@ -95,20 +134,20 @@ export default function ProfilePage() {
     .slice()
     .sort((a, b) => (b.level ?? 0) - (a.level ?? 0));
 
+  const displayName = portfolio?.user.name ?? me.name ?? me.github_login;
+  const avatar = portfolio?.user.avatar_url ?? me.avatar_url;
+  const bio = portfolio?.user.bio ?? null;
+  const location = portfolio?.user.location ?? null;
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-surface">
       <Navbar user={me} />
 
       <main className="mx-auto max-w-6xl px-6 py-8 sm:py-10">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Profile
-            </h1>
-            <p className="mt-1 text-sm text-neutral-400">
-              Your skill graph, derived from public GitHub activity.
-            </p>
-          </div>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
+            Profile
+          </h1>
           <Button
             variant="secondary"
             onClick={refresh}
@@ -120,15 +159,17 @@ export default function ProfilePage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {needsProfile ? (
-          <div className="rounded-2xl border border-dashed border-surface-border bg-surface-raised/60 p-10 text-center">
-            <h3 className="text-base font-semibold">No profile yet</h3>
-            <p className="mx-auto mt-2 max-w-md text-sm text-neutral-400">
+          <div className="rounded-2xl border border-dashed border-surface-border bg-white/60 p-10 text-center">
+            <h3 className="text-base font-semibold text-neutral-900">
+              No profile yet
+            </h3>
+            <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">
               Build your skill graph from your public GitHub history. Takes
               about 10 seconds.
             </p>
@@ -143,43 +184,96 @@ export default function ProfilePage() {
             </div>
           </div>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
-            <aside>
-              <ProfileCard user={me} profile={profile} compact />
-            </aside>
-
-            <section className="space-y-6">
-              {/* Skills grid */}
-              <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
-                <div className="mb-4 flex items-baseline justify-between">
-                  <h2 className="text-base font-semibold tracking-tight">
-                    Skills
-                  </h2>
-                  <span className="text-xs text-neutral-500">
-                    {skills.length} detected
-                  </span>
+          <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
+            {/* Left column */}
+            <aside className="space-y-5">
+              <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+                <div className="flex flex-col items-start gap-3">
+                  {avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={avatar}
+                      alt={me.github_login}
+                      className="h-16 w-16 rounded-full"
+                    />
+                  ) : (
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 text-lg font-semibold text-violet-700">
+                      {initials(displayName)}
+                    </span>
+                  )}
+                  <div>
+                    <h2 className="text-lg font-semibold text-neutral-900">
+                      {displayName}
+                    </h2>
+                    <a
+                      href={`https://github.com/${me.github_login}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-neutral-500 transition hover:text-violet-700"
+                    >
+                      <GitHubIcon className="h-3.5 w-3.5" />@{me.github_login}
+                    </a>
+                  </div>
                 </div>
 
+                {(profile?.summary || bio) && (
+                  <p className="mt-4 text-sm leading-relaxed text-neutral-700">
+                    {profile?.summary ?? bio}
+                  </p>
+                )}
+
+                {location && (
+                  <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-neutral-500">
+                    <span aria-hidden>📍</span>
+                    {location}
+                  </p>
+                )}
+
+                {portfolio && (
+                  <dl className="mt-4 flex gap-6 border-t border-surface-border pt-4">
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+                        followers
+                      </dt>
+                      <dd className="mt-0.5 font-mono text-base font-semibold text-neutral-900">
+                        {portfolio.user.followers.toLocaleString()}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+                        repos
+                      </dt>
+                      <dd className="mt-0.5 font-mono text-base font-semibold text-neutral-900">
+                        {portfolio.user.repos.toLocaleString()}
+                      </dd>
+                    </div>
+                  </dl>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+                <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                  Top skills
+                </h3>
                 {skills.length === 0 ? (
                   <p className="text-sm text-neutral-500">
                     No skills detected yet.
                   </p>
                 ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {skills.map((s) => (
-                      <SkillBar key={s.name} skill={s} />
+                  <div className="space-y-3">
+                    {skills.slice(0, 6).map((s) => (
+                      <SkillRow key={s.name} skill={s} />
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Interests */}
               {profile?.interests && profile.interests.length > 0 && (
-                <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
-                  <h2 className="mb-4 text-base font-semibold tracking-tight">
+                <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+                  <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
                     Interests
-                  </h2>
-                  <div className="flex flex-wrap gap-2">
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
                     {profile.interests.map((i) => (
                       <Badge key={i} tone="accent">
                         {i}
@@ -188,34 +282,66 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
+            </aside>
 
-              {/* CLI token */}
-              <CliTokenPanel />
+            {/* Right column */}
+            <section className="space-y-5">
+              <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+                {portfolio ? (
+                  <ContributionHeatmap
+                    weeks={portfolio.contributions.weeks}
+                    total={portfolio.contributions.total}
+                  />
+                ) : (
+                  <div className="h-32 rounded-xl bg-neutral-50 shimmer" />
+                )}
+              </div>
 
-              {/* Matched issues */}
-              <div>
-                <div className="mb-4 flex items-baseline justify-between">
-                  <h2 className="text-base font-semibold tracking-tight">
-                    Matched issues
-                  </h2>
-                  <span className="text-xs text-neutral-500">
-                    {feed?.count ?? 0} in feed
-                  </span>
-                </div>
-                {feed && feed.items.length > 0 ? (
-                  <ul className="grid gap-3">
-                    {feed.items.map((item) => (
-                      <li key={item.id}>
-                        <IssueCard item={item} />
+              <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+                <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                  Latest merged PRs
+                </h3>
+                {portfolio?.merged_prs?.length ? (
+                  <ul className="divide-y divide-surface-border">
+                    {portfolio.merged_prs.slice(0, 6).map((pr) => (
+                      <li key={pr.url} className="py-3 first:pt-0 last:pb-0">
+                        <a
+                          href={pr.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group flex items-start justify-between gap-4"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 text-sm font-medium text-neutral-900 group-hover:text-violet-700">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                              <span className="truncate">{pr.title}</span>
+                            </div>
+                            <div className="ml-4 mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-neutral-500">
+                              <span className="font-mono">{pr.repo.name}</span>
+                              <span>·</span>
+                              <span>{fmtMonth(pr.merged_at)}</span>
+                            </div>
+                          </div>
+                          <div className="shrink-0 font-mono text-xs tabular-nums">
+                            <span className="text-emerald-600">
+                              +{pr.additions}
+                            </span>{" "}
+                            <span className="text-red-500">
+                              −{pr.deletions}
+                            </span>
+                          </div>
+                        </a>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="rounded-xl border border-dashed border-surface-border bg-surface-raised/60 p-6 text-sm text-neutral-500">
-                    No matches yet — refresh your profile to rebuild the feed.
+                  <p className="text-sm text-neutral-500">
+                    No merged PRs found in your public history yet.
                   </p>
                 )}
               </div>
+
+              <CliTokenPanel />
             </section>
           </div>
         )}
@@ -251,38 +377,37 @@ function CliTokenPanel() {
       await navigator.clipboard.writeText(token);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* clipboard may be blocked */
-    }
+    } catch {}
   }
 
   return (
-    <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
+    <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-base font-semibold tracking-tight">CLI token</h2>
-        <code className="text-[10px] font-mono text-neutral-500">osh login</code>
+        <h2 className="text-base font-semibold tracking-tight text-neutral-900">
+          CLI token
+        </h2>
+        <code className="font-mono text-[10px] text-neutral-400">osh login</code>
       </div>
-      <p className="mb-4 text-sm text-neutral-400">
+      <p className="mb-4 text-sm text-neutral-500">
         Generate a token to authenticate the{" "}
-        <code className="font-mono text-neutral-300">osh</code> CLI. Generating
+        <code className="font-mono text-neutral-700">osh</code> CLI. Generating
         again rotates the token; the old one stops working.
       </p>
       {token ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <code className="flex-1 truncate rounded-lg border border-surface-border bg-surface-muted px-3 py-2 font-mono text-xs text-neutral-200">
+            <code className="flex-1 truncate rounded-lg border border-surface-border bg-surface-muted px-3 py-2 font-mono text-xs text-neutral-800">
               {token}
             </code>
             <button
               onClick={copy}
-              className="rounded-lg border border-surface-border bg-surface-muted px-3 py-2 text-xs text-neutral-300 transition hover:text-violet-300"
+              className="rounded-lg border border-surface-border bg-white px-3 py-2 text-xs text-neutral-700 transition hover:text-violet-700"
             >
               {copied ? "copied" : "copy"}
             </button>
           </div>
-          <p className="text-xs text-amber-300/80">
-            Copy this now — it won&apos;t be shown again. Paste it into{" "}
-            <code className="font-mono">osh login</code>.
+          <p className="text-xs text-amber-700">
+            Copy this now — it won&apos;t be shown again.
           </p>
         </div>
       ) : (
@@ -290,35 +415,35 @@ function CliTokenPanel() {
           Generate token
         </Button>
       )}
-      {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
+      {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
     </div>
   );
 }
 
-function SkillBar({ skill }: { skill: Skill }) {
+function SkillRow({ skill }: { skill: Skill }) {
   const level = Math.max(1, Math.min(5, skill.level ?? 1));
-  const pct = (level / 5) * 100;
   return (
-    <div className="rounded-xl border border-surface-border bg-surface-muted/60 p-3">
+    <div>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate text-sm font-medium text-neutral-100">
+        <span className="truncate text-sm font-medium text-neutral-800">
           {skill.name}
         </span>
         <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
-          L{level}
+          L{level}/5
         </span>
       </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/5">
-        <div
-          className="h-full rounded-full bg-accent-gradient transition-[width]"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="mt-1.5 flex gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <span
+            key={n}
+            className={
+              n <= level
+                ? "h-1.5 flex-1 rounded-full bg-violet-500"
+                : "h-1.5 flex-1 rounded-full bg-neutral-200"
+            }
+          />
+        ))}
       </div>
-      {skill.evidence && (
-        <p className="mt-2 line-clamp-2 text-xs text-neutral-500">
-          {skill.evidence}
-        </p>
-      )}
     </div>
   );
 }

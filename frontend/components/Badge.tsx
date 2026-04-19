@@ -4,12 +4,12 @@ import type { HTMLAttributes, ReactNode } from "react";
 type Tone = "neutral" | "accent" | "green" | "yellow" | "red" | "blue";
 
 const tones: Record<Tone, string> = {
-  neutral: "bg-white/5 text-neutral-300 border-white/5",
-  accent: "bg-accent-soft text-violet-200 border-accent/30",
-  green: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
-  yellow: "bg-amber-500/10 text-amber-300 border-amber-500/20",
-  red: "bg-red-500/10 text-red-300 border-red-500/20",
-  blue: "bg-sky-500/10 text-sky-300 border-sky-500/20",
+  neutral: "bg-white text-neutral-700 border-neutral-200",
+  accent: "bg-violet-50 text-violet-700 border-violet-200",
+  green: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  yellow: "bg-amber-50 text-amber-700 border-amber-200",
+  red: "bg-red-50 text-red-700 border-red-200",
+  blue: "bg-sky-50 text-sky-700 border-sky-200",
 };
 
 type Props = HTMLAttributes<HTMLSpanElement> & {
