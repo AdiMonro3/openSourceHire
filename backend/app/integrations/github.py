@@ -172,3 +172,170 @@ async def fetch_repo_beginner_issues(
         REPO_ISSUES_QUERY, {"q": q, "first": limit}, ttl=ISSUE_FEED_TTL
     )
     return data["data"]["search"]
+
+
+RECENT_PRS_QUERY = """
+query RecentMergedPRs($owner: String!, $name: String!, $first: Int = 10) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(
+      first: $first
+      states: MERGED
+      orderBy: { field: UPDATED_AT, direction: DESC }
+    ) {
+      nodes {
+        number
+        title
+        body
+        url
+        mergedAt
+        additions
+        deletions
+        changedFiles
+        author { login }
+        commits(first: 5) {
+          nodes {
+            commit {
+              messageHeadline
+              messageBody
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
+
+RECENT_PRS_TTL = 60 * 60 * 6  # 6h — tone signal shifts slowly, but we want
+# coaching output to reflect freshly merged house style within the same day.
+
+
+async def fetch_recent_merged_prs(
+    token: str,
+    name_with_owner: str,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    """Most-recently-merged PRs on the default branch.
+
+    Returns a list of PR nodes with title, body, top commits, and size stats.
+    Caller is responsible for filtering bots and truncating bodies before
+    handing the payload to an LLM.
+    """
+    owner, name = name_with_owner.split("/", 1)
+    client = GitHubClient(token)
+    data = await client.graphql(
+        RECENT_PRS_QUERY,
+        {"owner": owner, "name": name, "first": limit},
+        ttl=RECENT_PRS_TTL,
+    )
+    repo = (data.get("data") or {}).get("repository") or {}
+    return (repo.get("pullRequests") or {}).get("nodes") or []
+
+
+REPO_CONTEXT_TTL = 60 * 60 * 24  # 24h — READMEs + tree shift slowly.
+
+_README_CANDIDATES = [
+    "HEAD:README.md",
+    "HEAD:README.rst",
+    "HEAD:README",
+    "HEAD:readme.md",
+    "HEAD:Readme.md",
+    "HEAD:docs/README.md",
+]
+
+_README_QUERY_TEMPLATE = """
+query RepoReadme($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    defaultBranchRef { name }
+%s
+  }
+}
+"""
+
+
+def _readme_query() -> str:
+    fields = "\n".join(
+        f'    f{i}: object(expression: "{expr}") {{ ... on Blob {{ text isBinary }} }}'
+        for i, expr in enumerate(_README_CANDIDATES)
+    )
+    return _README_QUERY_TEMPLATE % fields
+
+
+async def fetch_repo_readme(token: str, name_with_owner: str) -> str | None:
+    """First non-binary README found under the default branch, or None."""
+    owner, name = name_with_owner.split("/", 1)
+    client = GitHubClient(token)
+    data = await client.graphql(
+        _readme_query(), {"owner": owner, "name": name}, ttl=REPO_CONTEXT_TTL
+    )
+    repo = (data.get("data") or {}).get("repository") or {}
+    for i in range(len(_README_CANDIDATES)):
+        blob = repo.get(f"f{i}")
+        if blob and not blob.get("isBinary") and blob.get("text"):
+            return blob["text"]
+    return None
+
+
+# Skip vendored/build dirs and binary-ish leaves when showing a tree to an LLM.
+_TREE_SKIP_PARTS = {
+    "node_modules",
+    "dist",
+    "build",
+    "out",
+    "target",
+    ".git",
+    ".next",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".tox",
+    "vendor",
+    "third_party",
+    "fixtures",
+    "testdata",
+    "coverage",
+}
+_TREE_KEEP_SUFFIXES = (
+    ".py", ".pyi", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs",
+    ".go", ".rs", ".java", ".kt", ".scala", ".rb", ".php",
+    ".c", ".h", ".cc", ".cpp", ".hpp", ".cs", ".swift", ".m",
+    ".sh", ".bash", ".zsh",
+    ".md", ".rst", ".txt",
+    ".yaml", ".yml", ".toml", ".json", ".cfg", ".ini",
+    ".sql", ".graphql", ".proto",
+    "Dockerfile", "Makefile",
+)
+
+
+def _keep_path(path: str) -> bool:
+    parts = path.split("/")
+    if any(p in _TREE_SKIP_PARTS for p in parts):
+        return False
+    if path.endswith((".min.js", ".min.css", ".map", ".lock")):
+        return False
+    return path.endswith(_TREE_KEEP_SUFFIXES)
+
+
+async def fetch_repo_tree(
+    token: str, name_with_owner: str, max_paths: int = 250
+) -> list[str]:
+    """Shallow list of source-file paths on the default branch.
+
+    Uses REST `git/trees/HEAD?recursive=1`. Filters out vendored/build dirs
+    and keeps only recognized source/doc/config extensions. Caller decides
+    how to present (sorted, grouped, truncated further) for the LLM.
+    """
+    client = GitHubClient(token)
+    path = f"/repos/{name_with_owner}/git/trees/HEAD?recursive=1"
+    data = await client.rest(path, ttl=REPO_CONTEXT_TTL)
+    tree = data.get("tree") or []
+    paths = [
+        t["path"]
+        for t in tree
+        if t.get("type") == "blob" and _keep_path(t.get("path", ""))
+    ]
+    paths.sort()
+    return paths[:max_paths]

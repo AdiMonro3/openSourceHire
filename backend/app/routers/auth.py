@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.deps import get_db
+from app.deps import get_current_user, get_db
 from app.models import User
 
 router = APIRouter(prefix="/auth/github", tags=["auth"])
@@ -115,4 +115,34 @@ async def github_callback(
 @router.post("/logout")
 def logout(request: Request) -> dict[str, bool]:
     request.session.clear()
+    return {"ok": True}
+
+
+cli_router = APIRouter(prefix="/auth/cli", tags=["auth"])
+
+
+@cli_router.post("/token")
+def issue_cli_token(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """Generate (and overwrite) the user's CLI bearer token.
+
+    Session-authenticated: the web app calls this from the profile page, so
+    only the browser-logged-in user can mint a token for themselves. Calling
+    again rotates the token — the old one stops working immediately.
+    """
+    token = "osh_" + secrets.token_urlsafe(32)
+    user.api_token = token
+    db.commit()
+    return {"token": token}
+
+
+@cli_router.delete("/token")
+def revoke_cli_token(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, bool]:
+    user.api_token = None
+    db.commit()
     return {"ok": True}

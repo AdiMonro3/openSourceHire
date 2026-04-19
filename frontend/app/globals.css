@@ -3,9 +3,63 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 }
 
+html,
 body {
-  @apply bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
+  @apply bg-surface text-neutral-100 antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* Subtle dotted grid used by landing / login backdrops */
+.bg-dots {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(255, 255, 255, 0.045) 1px,
+    transparent 0
+  );
+  background-size: 24px 24px;
+}
+
+/* Soft vignette behind heroes */
+.bg-hero-glow {
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(139, 92, 246, 0.18) 0%, transparent 70%),
+    radial-gradient(50% 40% at 80% 30%, rgba(99, 102, 241, 0.12) 0%, transparent 70%),
+    radial-gradient(40% 35% at 15% 60%, rgba(217, 70, 239, 0.10) 0%, transparent 70%);
+}
+
+/* Loading shimmer */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  background-size: 200% 100%;
+  @apply animate-shimmer;
+}
+
+/* Focus rings */
+*:focus-visible {
+  outline: none;
+  @apply ring-2 ring-accent-ring ring-offset-2 ring-offset-surface;
+}
+
+/* Scrollbar polish */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2f;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a40;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
