@@ -1,0 +1,135 @@
+# Curated beginner-friendly OSS repos.
+# Format: owner/repo, one per line. Comments start with #.
+# These are seeded with is_curated=True and get a reputation boost.
+
+# --- Python ---
+pandas-dev/pandas
+numpy/numpy
+scikit-learn/scikit-learn
+django/django
+pallets/flask
+fastapi/fastapi
+encode/httpx
+psf/requests
+pytest-dev/pytest
+python-poetry/poetry
+ansible/ansible
+home-assistant/core
+apache/airflow
+encode/starlette
+python-attrs/attrs
+sphinx-doc/sphinx
+streamlit/streamlit
+gradio-app/gradio
+huggingface/transformers
+langchain-ai/langchain
+
+# --- JavaScript / TypeScript ---
+microsoft/vscode
+microsoft/TypeScript
+facebook/react
+vuejs/core
+vercel/next.js
+nodejs/node
+denoland/deno
+vitejs/vite
+webpack/webpack
+babel/babel
+eslint/eslint
+prettier/prettier
+storybookjs/storybook
+electron/electron
+axios/axios
+expressjs/express
+nestjs/nest
+tailwindlabs/tailwindcss
+TanStack/query
+excalidraw/excalidraw
+tldraw/tldraw
+mrdoob/three.js
+
+# --- Go ---
+kubernetes/kubernetes
+moby/moby
+grafana/grafana
+prometheus/prometheus
+hashicorp/terraform
+gohugoio/hugo
+gin-gonic/gin
+etcd-io/etcd
+cli/cli
+spf13/cobra
+caddyserver/caddy
+istio/istio
+helm/helm
+
+# --- Rust ---
+rust-lang/rustlings
+BurntSushi/ripgrep
+rust-lang/cargo
+tokio-rs/tokio
+rust-lang/rust-analyzer
+bevyengine/bevy
+rust-lang/book
+
+# --- Java / Kotlin ---
+elastic/elasticsearch
+apache/kafka
+spring-projects/spring-boot
+JetBrains/kotlin
+
+# --- Ruby ---
+rails/rails
+Homebrew/brew
+jekyll/jekyll
+
+# --- C / C++ ---
+godotengine/godot
+microsoft/terminal
+curl/curl
+
+# --- Learning & docs-heavy (very welcoming to first PRs) ---
+freeCodeCamp/freeCodeCamp
+EbookFoundation/free-programming-books
+trekhleb/javascript-algorithms
+public-apis/public-apis
+ohmyzsh/ohmyzsh
+
+# --- Product / app repos with active good-first-issue labels ---
+zulip/zulip
+raycast/extensions
+supabase/supabase
+apache/superset
+getsentry/sentry
+PostHog/posthog
+appwrite/appwrite
+strapi/strapi
+directus/directus
+n8n-io/n8n
+ToolJet/ToolJet
+calcom/cal.com
+mattermost/mattermost
+rocketchat/Rocket.Chat
+element-hq/element-web
+meilisearch/meilisearch
+typesense/typesense
+MindsDB/mindsdb
+
+# --- ML / data tooling ---
+pytorch/pytorch
+huggingface/datasets
+scipy/scipy
+matplotlib/matplotlib
+plotly/plotly.py
+keras-team/keras
+dask/dask
+pola-rs/polars
+apache/arrow
+dbt-labs/dbt-core
+
+# --- Infra / CLI tools ---
+astral-sh/ruff
+astral-sh/uv
+charmbracelet/bubbletea
+junegunn/fzf
+neovim/neovim
