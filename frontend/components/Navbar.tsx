@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { LogoMark } from "./Icons";
 
@@ -15,7 +16,51 @@ const NAV = [
   { href: "/dashboard", label: "Feed", exact: true },
   { href: "/dashboard/profile", label: "Profile" },
   { href: "/dashboard/portfolio", label: "Portfolio" },
+  { href: "/dashboard/inbox", label: "Inbox", badge: "unread" as const },
 ];
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const LAST_VISIT_KEY = "osh:inbox:last_visit";
+
+function useUnreadCount(enabled: boolean) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch(`${API_URL}/users/me/contacts?limit=100`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const data: {
+          items: { created_at: string | null }[];
+        } = await res.json();
+        const lastVisit = (() => {
+          try {
+            return localStorage.getItem(LAST_VISIT_KEY);
+          } catch {
+            return null;
+          }
+        })();
+        const cutoff = lastVisit ? new Date(lastVisit).getTime() : 0;
+        const unread = data.items.filter((m) => {
+          if (!m.created_at) return false;
+          return new Date(m.created_at).getTime() > cutoff;
+        }).length;
+        if (!cancelled) setCount(unread);
+      } catch {
+        /* ignore */
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
+  return count;
+}
 
 function initials(user: User) {
   const src = user?.name ?? user?.github_login ?? "";
@@ -25,6 +70,7 @@ function initials(user: User) {
 
 export function Navbar({ user }: { user?: User }) {
   const pathname = usePathname();
+  const unreadCount = useUnreadCount(Boolean(user?.github_login));
 
   return (
     <header className="sticky top-0 z-30 border-b border-surface-border bg-white/80 backdrop-blur-xl">
@@ -45,18 +91,25 @@ export function Navbar({ user }: { user?: User }) {
               const active = item.exact
                 ? pathname === item.href
                 : pathname?.startsWith(item.href);
+              const showBadge =
+                item.badge === "unread" && unreadCount > 0 && !active;
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     className={clsx(
-                      "rounded-full px-3 py-1.5 text-sm transition-colors",
+                      "relative rounded-full px-3 py-1.5 text-sm transition-colors",
                       active
                         ? "bg-white text-neutral-900 shadow-card border border-surface-border"
                         : "text-neutral-500 hover:text-neutral-900",
                     )}
                   >
                     {item.label}
+                    {showBadge && (
+                      <span className="ml-1.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-violet-600 px-1 text-[10px] font-semibold text-white">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );

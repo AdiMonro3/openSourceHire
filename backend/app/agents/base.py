@@ -1,12 +1,15 @@
 """Shared Claude client with prompt-caching helpers.
 
 All agents must call Claude through this module so prompt-cache control,
-model selection, and structured-output parsing stay consistent.
+model selection, structured-output parsing, and audit logging stay
+consistent.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
+import time
 from functools import lru_cache
 from typing import Any, Literal
 
@@ -14,6 +17,7 @@ from anthropic import AsyncAnthropic
 from anthropic.types import MessageParam, TextBlockParam
 
 from app.config import get_settings
+from app.services.eval_log import log_agent_call
 
 ModelTier = Literal["sonnet", "haiku"]
 
@@ -43,6 +47,18 @@ def cached_text_block(text: str) -> TextBlockParam:
     }
 
 
+def _hash_prompt(system: str | list[TextBlockParam], messages: list[MessageParam]) -> str:
+    h = hashlib.sha256()
+    if isinstance(system, str):
+        h.update(system.encode("utf-8", "ignore"))
+    else:
+        for blk in system:
+            h.update(blk.get("text", "").encode("utf-8", "ignore"))
+    h.update(b"\x00")
+    h.update(json.dumps(messages, sort_keys=True, default=str).encode("utf-8", "ignore"))
+    return h.hexdigest()[:16]
+
+
 async def call_claude(
     *,
     system: str | list[TextBlockParam],
@@ -50,17 +66,51 @@ async def call_claude(
     tier: ModelTier = "sonnet",
     max_tokens: int = 2048,
     temperature: float = 0.2,
+    agent: str = "unknown",
+    user_id: int | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> str:
     client = get_anthropic()
-    res = await client.messages.create(
-        model=_resolve_model(tier),
-        max_tokens=max_tokens,
-        temperature=temperature,
-        system=system if isinstance(system, list) else [{"type": "text", "text": system}],
-        messages=messages,
-    )
-    parts = [b.text for b in res.content if getattr(b, "type", None) == "text"]
-    return "".join(parts)
+    model = _resolve_model(tier)
+    sys_param = system if isinstance(system, list) else [{"type": "text", "text": system}]
+    prompt_hash = _hash_prompt(system, messages)
+
+    started = time.perf_counter()
+    error: str | None = None
+    text = ""
+    usage: Any = None
+    try:
+        res = await client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system=sys_param,
+            messages=messages,
+        )
+        parts = [b.text for b in res.content if getattr(b, "type", None) == "text"]
+        text = "".join(parts)
+        usage = getattr(res, "usage", None)
+        return text
+    except Exception as e:
+        error = f"{type(e).__name__}: {e}"
+        raise
+    finally:
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        log_agent_call(
+            agent=agent,
+            tier=tier,
+            model=model,
+            user_id=user_id,
+            prompt_hash=prompt_hash,
+            input_tokens=getattr(usage, "input_tokens", None),
+            output_tokens=getattr(usage, "output_tokens", None),
+            cache_read=getattr(usage, "cache_read_input_tokens", None),
+            cache_write=getattr(usage, "cache_creation_input_tokens", None),
+            latency_ms=latency_ms,
+            output_text=text,
+            metadata=metadata,
+            error=error,
+        )
 
 
 _JSON_BLOCK = re.compile(r"```(?:json)?\s*(\{.*?\}|\[.*?\])\s*```", re.DOTALL)

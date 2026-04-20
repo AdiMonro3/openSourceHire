@@ -21,12 +21,16 @@ OAUTH_SCOPES = "read:user user:email public_repo"
 
 
 @router.get("/login")
-def github_login(request: Request) -> RedirectResponse:
+def github_login(request: Request, intent: str | None = None) -> RedirectResponse:
     settings = get_settings()
     if not settings.github_client_id:
         raise HTTPException(500, "GITHUB_CLIENT_ID not configured")
     state = secrets.token_urlsafe(24)
     request.session["oauth_state"] = state
+    if intent in {"publish"}:
+        request.session["oauth_intent"] = intent
+    else:
+        request.session.pop("oauth_intent", None)
     qs = urlencode(
         {
             "client_id": settings.github_client_id,
@@ -107,9 +111,11 @@ async def github_callback(
     db.refresh(user)
 
     request.session["user_id"] = user.id
+    intent = request.session.pop("oauth_intent", None)
 
     frontend_origin = settings.cors_origins_list[0] if settings.cors_origins_list else "/"
-    return RedirectResponse(f"{frontend_origin}/dashboard", status_code=status.HTTP_302_FOUND)
+    landing = "/dashboard/portfolio?first=1" if intent == "publish" else "/dashboard"
+    return RedirectResponse(f"{frontend_origin}{landing}", status_code=status.HTTP_302_FOUND)
 
 
 @router.post("/logout")

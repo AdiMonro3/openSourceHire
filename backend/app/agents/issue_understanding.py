@@ -102,6 +102,8 @@ async def understand_issue(
         tier="sonnet",
         max_tokens=1200,
         temperature=0.2,
+        agent="issue_understanding",
+        metadata={"issue_id": issue_id, "repo": repo.name_with_owner},
     )
     parsed = parse_json(raw)
     parsed.setdefault("plain_summary", "")

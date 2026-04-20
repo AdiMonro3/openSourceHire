@@ -97,6 +97,8 @@ async def build_skill_profile(github_token: str) -> dict[str, Any]:
         tier="sonnet",
         max_tokens=1500,
         temperature=0.1,
+        agent="skill_graph",
+        metadata={"login": facts.get("login")},
     )
     parsed = parse_json(raw)
     parsed.setdefault("skills", [])

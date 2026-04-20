@@ -9,7 +9,15 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ intent?: string }>;
+}) {
+  const { intent } = await searchParams;
+  const oauthUrl = intent
+    ? `${API_URL}/auth/github/login?intent=${encodeURIComponent(intent)}`
+    : `${API_URL}/auth/github/login`;
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface px-6 py-12">
       <div aria-hidden className="absolute inset-0 bg-hero-glow" />
@@ -34,7 +42,7 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
-          <a href={`${API_URL}/auth/github/login`} className="block">
+          <a href={oauthUrl} className="block">
             <Button
               className="w-full"
               size="lg"

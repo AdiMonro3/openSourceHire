@@ -110,6 +110,9 @@ async def rank_issues_for_user(
         tier="haiku",
         max_tokens=1500,
         temperature=0.2,
+        agent="scout",
+        user_id=user_id,
+        metadata={"k": k, "prefilter": prefilter, "candidates": len(candidates)},
     )
     parsed = parse_json(raw)
     rankings = parsed.get("rankings", []) if isinstance(parsed, dict) else []

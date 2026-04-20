@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     session_secret: str = Field(default="change-me-please")
     backend_cors_origins: str = Field(default="http://localhost:3000")
 
+    resend_api_key: str = Field(default="")
+    email_from: str = Field(default="onboarding@resend.dev")
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.backend_cors_origins.split(",") if o.strip()]

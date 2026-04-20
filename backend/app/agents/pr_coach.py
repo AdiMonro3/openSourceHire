@@ -166,6 +166,12 @@ async def coach_pr(
         tier="sonnet",
         max_tokens=1400,
         temperature=0.3,
+        agent="pr_coach",
+        metadata={
+            "issue_id": issue_id,
+            "repo": repo.name_with_owner,
+            "draft_chars": len(draft_clean),
+        },
     )
     parsed = parse_json(raw)
     if not isinstance(parsed, dict):

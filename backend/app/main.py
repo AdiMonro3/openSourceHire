@@ -8,8 +8,10 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.config import get_settings
 from app.routers import admin as admin_router
 from app.routers import auth as auth_router
+from app.routers import contact as contact_router
 from app.routers import feed as feed_router
 from app.routers import issues as issues_router
+from app.routers import portfolio as portfolio_router
 from app.routers import users as users_router
 
 logger = logging.getLogger(__name__)
@@ -36,6 +38,8 @@ app.add_middleware(
 app.include_router(auth_router.router)
 app.include_router(auth_router.cli_router)
 app.include_router(users_router.router)
+app.include_router(portfolio_router.router)
+app.include_router(contact_router.router)
 app.include_router(feed_router.router)
 app.include_router(issues_router.router)
 app.include_router(admin_router.router)

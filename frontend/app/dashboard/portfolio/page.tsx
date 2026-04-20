@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import { api, ApiError } from "@/lib/api-client";
 import { Navbar } from "@/components/Navbar";
@@ -64,6 +66,46 @@ export default function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [publishing, setPublishing] = useState(false);
+  const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const searchParams = useSearchParams();
+  const autoPublishedRef = useRef(false);
+
+  const publicUrl = me
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/profile/${me.github_login}`
+    : "";
+
+  async function onPublish() {
+    setPublishing(true);
+    setError(null);
+    try {
+      const res = await api<{ generated_at: string }>(
+        "/users/me/portfolio/publish",
+        { method: "POST" },
+      );
+      setPublishedAt(res.generated_at);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  async function onCopy() {
+    if (!publicUrl) return;
+    await navigator.clipboard.writeText(publicUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  useEffect(() => {
+    if (!me || autoPublishedRef.current) return;
+    if (searchParams?.get("first") !== "1") return;
+    autoPublishedRef.current = true;
+    onPublish();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me]);
 
   useEffect(() => {
     api<Me>("/users/me")
@@ -91,13 +133,46 @@ export default function PortfolioPage() {
       <Navbar user={me} />
 
       <main className="mx-auto max-w-6xl px-6 py-8 sm:py-10">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
-            Contribution portfolio
-          </h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Merged pull requests across open-source.
-          </p>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
+              Contribution portfolio
+            </h1>
+            <p className="mt-1 text-sm text-neutral-500">
+              Merged pull requests across open-source.
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              onClick={onPublish}
+              disabled={publishing || !me}
+              className={clsx(
+                "rounded-full border px-4 py-2 text-sm font-medium transition",
+                publishing
+                  ? "cursor-not-allowed border-surface-border bg-neutral-100 text-neutral-500"
+                  : "border-violet-600 bg-violet-600 text-white hover:bg-violet-700",
+              )}
+            >
+              {publishing ? "Publishing…" : publishedAt ? "Re-publish" : "Publish public profile"}
+            </button>
+            {me && (publishedAt || !publishing) && (
+              <div className="flex items-center gap-2 text-xs text-neutral-500">
+                <Link
+                  href={`/profile/${me.github_login}`}
+                  target="_blank"
+                  className="font-mono text-neutral-700 underline decoration-dotted hover:text-violet-700"
+                >
+                  /profile/{me.github_login}
+                </Link>
+                <button
+                  onClick={onCopy}
+                  className="rounded-md border border-surface-border bg-white px-2 py-0.5 transition hover:border-neutral-300"
+                >
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {error && (

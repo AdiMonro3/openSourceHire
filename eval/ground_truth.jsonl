@@ -1,0 +1,6 @@
+{"_comment": "One row per (github_login, expected_issues). expected_issues is a list of GitHub issue URLs the user was known to be a good fit for — typically issues they later submitted a merged PR against. Hand-label ~20 rows for stable precision@5. Lines starting with _comment are skipped by the runner."}
+{"github_login": "torvalds", "expected_issues": []}
+{"github_login": "sindresorhus", "expected_issues": []}
+{"github_login": "tj", "expected_issues": []}
+{"github_login": "yyx990803", "expected_issues": []}
+{"github_login": "gaearon", "expected_issues": []}
