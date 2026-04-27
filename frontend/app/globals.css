@@ -3,12 +3,12 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html,
 body {
-  @apply bg-surface text-neutral-900 antialiased;
+  @apply bg-surface text-ink antialiased;
   font-feature-settings: "cv11", "ss01";
 }
 
@@ -16,7 +16,7 @@ body {
 .bg-dots {
   background-image: radial-gradient(
     circle at 1px 1px,
-    rgba(15, 15, 20, 0.05) 1px,
+    rgba(255, 255, 255, 0.05) 1px,
     transparent 0
   );
   background-size: 24px 24px;
@@ -25,18 +25,18 @@ body {
 /* Soft tint behind heroes */
 .bg-hero-glow {
   background:
-    radial-gradient(60% 50% at 50% 0%, rgba(124, 58, 237, 0.07) 0%, transparent 70%),
-    radial-gradient(50% 40% at 80% 30%, rgba(99, 102, 241, 0.05) 0%, transparent 70%),
-    radial-gradient(40% 35% at 15% 60%, rgba(217, 70, 239, 0.04) 0%, transparent 70%);
+    radial-gradient(60% 50% at 50% 0%, rgba(139, 92, 246, 0.18) 0%, transparent 70%),
+    radial-gradient(50% 40% at 80% 30%, rgba(99, 102, 241, 0.12) 0%, transparent 70%),
+    radial-gradient(40% 35% at 15% 60%, rgba(217, 70, 239, 0.1) 0%, transparent 70%);
 }
 
 /* Loading shimmer */
 .shimmer {
   background: linear-gradient(
     90deg,
-    rgba(15, 15, 20, 0.03) 0%,
-    rgba(15, 15, 20, 0.06) 50%,
-    rgba(15, 15, 20, 0.03) 100%
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
   );
   background-size: 200% 100%;
   @apply animate-shimmer;
@@ -54,12 +54,17 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
+  background: rgba(255, 255, 255, 0.16);
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Hairline card surface used across the app */
+.card-surface {
+  @apply rounded-2xl border border-surface-border bg-surface-raised shadow-card;
 }

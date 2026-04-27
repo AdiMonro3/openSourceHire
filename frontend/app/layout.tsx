@@ -18,12 +18,15 @@ export const metadata: Metadata = {
   title: "OpenSourceHire — Get hired for what you ship.",
   description:
     "AI-ranked open-source issues, matched to what you've actually shipped.",
+  themeColor: "#0A0A0B",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
-      <body className="min-h-screen font-sans">{children}</body>
+    <html lang="en" className={`${inter.variable} ${mono.variable} dark`}>
+      <body className="min-h-screen bg-surface font-sans text-ink">
+        {children}
+      </body>
     </html>
   );
 }

@@ -39,14 +39,14 @@ export function PortfolioNarrative({
   return (
     <section className="space-y-8">
       {(narrative.headline || narrative.summary) && (
-        <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+        <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
           {narrative.headline && (
-            <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
+            <h2 className="text-xl font-semibold tracking-tight text-ink">
               {narrative.headline}
             </h2>
           )}
           {narrative.summary && (
-            <p className="mt-3 text-sm leading-relaxed text-neutral-700">
+            <p className="mt-3 text-sm leading-relaxed text-ink-muted">
               {narrative.summary}
             </p>
           )}
@@ -55,18 +55,18 @@ export function PortfolioNarrative({
 
       {narrative.strengths && narrative.strengths.length > 0 && (
         <div>
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
             Strengths
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
             {narrative.strengths.map((s) => (
               <div
                 key={s.label}
-                className="rounded-xl border border-surface-border bg-white p-4 shadow-card"
+                className="rounded-xl border border-surface-border bg-surface-raised p-4 shadow-card"
               >
                 <Badge tone="accent">{s.label}</Badge>
                 {s.evidence && (
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-700">
+                  <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                     {s.evidence}
                   </p>
                 )}
@@ -78,7 +78,7 @@ export function PortfolioNarrative({
 
       {highlights.length > 0 && (
         <div>
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
             Highlighted contributions
           </h3>
           <ul className="grid gap-3">
@@ -92,10 +92,10 @@ export function PortfolioNarrative({
                     rel="noreferrer"
                     className="group block"
                   >
-                    <article className="rounded-2xl border border-surface-border bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md">
+                    <article className="rounded-2xl border border-surface-border bg-surface-raised p-5 shadow-card transition-all hover:-translate-y-0.5 hover:border-surface-border-strong hover:bg-surface-hover hover:shadow-card-hover">
                       {pr && (
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
-                          <span className="font-mono text-neutral-700">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+                          <span className="font-mono text-ink">
                             {pr.repo.name}
                           </span>
                           {pr.repo.language && (
@@ -105,15 +105,15 @@ export function PortfolioNarrative({
                           <span>{fmtMonth(pr.merged_at)}</span>
                         </div>
                       )}
-                      <h4 className="mt-2 text-base font-semibold leading-snug tracking-tight text-neutral-900 group-hover:text-violet-700">
+                      <h4 className="mt-2 text-base font-semibold leading-snug tracking-tight text-ink group-hover:text-violet-300">
                         {pr?.title ?? h.pr_url}
                       </h4>
-                      <p className="mt-2 text-sm text-neutral-700">
-                        <span className="font-medium">Impact: </span>
+                      <p className="mt-2 text-sm text-ink-muted">
+                        <span className="font-medium text-ink">Impact: </span>
                         {h.impact}
                       </p>
-                      <p className="mt-1 text-sm text-neutral-600">
-                        <span className="font-medium">Why it matters: </span>
+                      <p className="mt-1 text-sm text-ink-muted">
+                        <span className="font-medium text-ink">Why it matters: </span>
                         {h.why_it_matters}
                       </p>
                     </article>
@@ -127,11 +127,11 @@ export function PortfolioNarrative({
 
       {narrative.recommended_next_steps &&
         narrative.recommended_next_steps.length > 0 && (
-          <div className="rounded-2xl border border-dashed border-surface-border bg-white/60 p-5">
-            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+          <div className="rounded-2xl border border-dashed border-surface-border bg-surface-raised/40 p-5">
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
               Recommended next steps
             </h3>
-            <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-700">
+            <ul className="list-disc space-y-1 pl-5 text-sm text-ink-muted marker:text-ink-subtle">
               {narrative.recommended_next_steps.map((step, i) => (
                 <li key={i}>{step}</li>
               ))}

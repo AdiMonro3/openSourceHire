@@ -73,7 +73,7 @@ export default function InboxPage() {
     return (
       <div className="relative min-h-screen overflow-hidden bg-surface">
         <main className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center gap-5 px-6 py-16 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
             You&apos;re not signed in
           </h1>
           <a href="/login" className="mx-auto">
@@ -91,16 +91,16 @@ export default function InboxPage() {
       <Navbar user={me} />
       <main className="mx-auto max-w-3xl px-6 py-8 sm:py-10">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
             Inbox
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-sm text-ink-muted">
             Messages from people who viewed your public profile.
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
             {error}
           </div>
         )}
@@ -110,18 +110,18 @@ export default function InboxPage() {
             {[0, 1, 2].map((i) => (
               <li
                 key={i}
-                className="h-32 rounded-2xl border border-surface-border bg-white shimmer"
+                className="h-32 rounded-2xl border border-surface-border bg-surface-raised shimmer"
               />
             ))}
           </ul>
         )}
 
         {!loading && inbox && inbox.items.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-surface-border bg-white/60 p-10 text-center">
-            <h3 className="text-base font-semibold text-neutral-900">
+          <div className="rounded-2xl border border-dashed border-surface-border bg-surface-raised/40 p-10 text-center">
+            <h3 className="text-base font-semibold text-ink">
               No messages yet
             </h3>
-            <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">
+            <p className="mx-auto mt-2 max-w-md text-sm text-ink-muted">
               Share your public profile link to start receiving inbound.
             </p>
           </div>
@@ -132,14 +132,14 @@ export default function InboxPage() {
             {inbox.items.map((msg) => (
               <li
                 key={msg.id}
-                className="rounded-2xl border border-surface-border bg-white p-5 shadow-card"
+                className="rounded-2xl border border-surface-border bg-surface-raised p-5 shadow-card"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold text-neutral-900">
+                    <p className="text-sm font-semibold text-ink">
                       {msg.from_name}
                       {msg.from_company && (
-                        <span className="text-neutral-500">
+                        <span className="text-ink-muted">
                           {" "}
                           · {msg.from_company}
                         </span>
@@ -147,16 +147,16 @@ export default function InboxPage() {
                     </p>
                     <a
                       href={`mailto:${msg.from_email}`}
-                      className="text-xs text-violet-600 hover:underline"
+                      className="text-xs text-violet-300 hover:underline"
                     >
                       {msg.from_email}
                     </a>
                   </div>
-                  <span className="text-[11px] text-neutral-400">
+                  <span className="text-[11px] text-ink-subtle">
                     {formatDate(msg.created_at)}
                   </span>
                 </div>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink-muted">
                   {msg.body}
                 </p>
               </li>

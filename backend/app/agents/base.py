@@ -8,16 +8,26 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import time
 from functools import lru_cache
 from typing import Any, Literal
 
-from anthropic import AsyncAnthropic
+from anthropic import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    AsyncAnthropic,
+    RateLimitError,
+)
 from anthropic.types import MessageParam, TextBlockParam
+from fastapi import HTTPException
 
 from app.config import get_settings
 from app.services.eval_log import log_agent_call
+
+logger = logging.getLogger(__name__)
 
 ModelTier = Literal["sonnet", "haiku"]
 
@@ -30,9 +40,14 @@ def _resolve_model(tier: ModelTier) -> str:
 @lru_cache
 def get_anthropic() -> AsyncAnthropic:
     """Returns an AsyncAnthropic client; if ANTHROPIC_BASE_URL is set, points
-    the SDK at that gateway (z.ai GLM, self-hosted proxies, etc.)."""
+    the SDK at that gateway (z.ai GLM, self-hosted proxies, etc.).
+
+    ``max_retries=5`` lets the SDK's built-in exponential back-off ride out
+    transient upstream 429/5xx — helpful against third-party gateways that
+    return short "service overloaded" bursts (e.g. z.ai code 1305).
+    """
     s = get_settings()
-    kwargs: dict = {"api_key": s.anthropic_api_key}
+    kwargs: dict = {"api_key": s.anthropic_api_key, "max_retries": 5}
     if s.anthropic_base_url:
         kwargs["base_url"] = s.anthropic_base_url
     return AsyncAnthropic(**kwargs)
@@ -91,6 +106,25 @@ async def call_claude(
         text = "".join(parts)
         usage = getattr(res, "usage", None)
         return text
+    except (RateLimitError, APITimeoutError, APIConnectionError) as e:
+        error = f"{type(e).__name__}: {e}"
+        logger.warning("Claude upstream unavailable (agent=%s tier=%s): %s", agent, tier, e)
+        raise HTTPException(
+            status_code=503,
+            detail="AI service is temporarily overloaded. Please retry in a moment.",
+        ) from e
+    except APIStatusError as e:
+        error = f"{type(e).__name__}: {e}"
+        logger.warning(
+            "Claude API error (agent=%s tier=%s status=%s): %s",
+            agent, tier, getattr(e, "status_code", "?"), e,
+        )
+        if getattr(e, "status_code", 0) in (429, 502, 503, 504):
+            raise HTTPException(
+                status_code=503,
+                detail="AI service is temporarily overloaded. Please retry in a moment.",
+            ) from e
+        raise
     except Exception as e:
         error = f"{type(e).__name__}: {e}"
         raise

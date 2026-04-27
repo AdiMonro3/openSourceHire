@@ -5,16 +5,32 @@ well under the 5000 req/hr GraphQL rate limit.
 """
 from __future__ import annotations
 
-from typing import Any
+import asyncio
+import base64
+from typing import Any, Literal
 
 import httpx
 
 from app.services.cache import cache_key, get_json, set_json
+from app.services.eval_log import log_github_write
 
 GRAPHQL_URL = "https://api.github.com/graphql"
 REST_URL = "https://api.github.com"
 
 DEFAULT_TTL = 60 * 60  # 1h
+
+
+class GitHubWriteError(RuntimeError):
+    """GitHub write call failed. Exposes status + response body."""
+
+    def __init__(self, status: int, body: Any, message: str):
+        super().__init__(message)
+        self.status = status
+        self.body = body
+
+
+class ForkNameCollision(GitHubWriteError):
+    """User already has a repo with the fork name, but it's not a fork of the upstream."""
 
 
 class GitHubClient:
@@ -66,6 +82,31 @@ class GitHubClient:
 
         await set_json(key, data, ttl)
         return data
+
+    async def rest_raw(
+        self,
+        method: Literal["GET", "POST", "PUT", "PATCH", "DELETE"],
+        path: str,
+        json: dict[str, Any] | None = None,
+    ) -> tuple[int, Any]:
+        """Uncached REST call for writes and freshness-critical reads.
+
+        Returns (status, parsed_body). Does not raise on non-2xx — the caller
+        decides whether 4xx is an error or a known branching condition
+        (e.g. 422 on `create_or_update_ref` means "already exists, PATCH").
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            res = await client.request(
+                method,
+                f"{REST_URL}{path}",
+                headers=self._headers,
+                json=json,
+            )
+            try:
+                body = res.json() if res.content else None
+            except ValueError:
+                body = res.text
+            return res.status_code, body
 
 
 VIEWER_PROFILE_QUERY = """
@@ -400,3 +441,293 @@ async def fetch_repo_tree(
     ]
     paths.sort()
     return paths[:max_paths]
+
+
+# ---------------------------------------------------------------------------
+# Fresh reads + writes for Fix Mode. None of these cache — Redis staleness on
+# a base-SHA or a freshly-created fork causes silent, user-visible corruption.
+# ---------------------------------------------------------------------------
+
+MAX_EDITABLE_FILE_BYTES = 500 * 1024  # 500KB hard cap for in-browser editing.
+
+
+def _raise_for_write(
+    status: int,
+    body: Any,
+    method: str,
+    path: str,
+    *,
+    allowed: tuple[int, ...] = (200, 201, 202, 204),
+) -> None:
+    if status in allowed:
+        return
+    detail = ""
+    if isinstance(body, dict):
+        detail = body.get("message") or str(body)
+    else:
+        detail = str(body or "")
+    raise GitHubWriteError(status, body, f"GitHub {method} {path} -> {status}: {detail[:200]}")
+
+
+async def fetch_default_branch_head(
+    token: str, name_with_owner: str
+) -> dict[str, str]:
+    """Current default-branch name + HEAD commit sha. Uncached — freshness matters."""
+    client = GitHubClient(token)
+    status, body = await client.rest_raw("GET", f"/repos/{name_with_owner}")
+    _raise_for_write(status, body, "GET", f"/repos/{name_with_owner}", allowed=(200,))
+    default_branch = body.get("default_branch")
+    if not default_branch:
+        raise GitHubWriteError(200, body, f"Repo {name_with_owner} has no default branch")
+
+    status, body = await client.rest_raw(
+        "GET", f"/repos/{name_with_owner}/branches/{default_branch}"
+    )
+    _raise_for_write(
+        status, body, "GET", f"/branches/{default_branch}", allowed=(200,)
+    )
+    sha = ((body or {}).get("commit") or {}).get("sha")
+    if not sha:
+        raise GitHubWriteError(200, body, "Default branch has no commit sha")
+    return {"branch": default_branch, "sha": sha}
+
+
+async def fetch_file_contents(
+    token: str,
+    name_with_owner: str,
+    path: str,
+    ref: str | None = None,
+) -> dict[str, Any]:
+    """Single-file read at a given ref.
+
+    Returns {text, sha, size, encoding, truncated, is_binary}. `truncated=True`
+    when size exceeds the editor cap — `text` is None in that case. `is_binary`
+    is a best-effort heuristic (null bytes in first 4KB or non-UTF-8).
+    """
+    client = GitHubClient(token)
+    url = f"/repos/{name_with_owner}/contents/{path}"
+    if ref:
+        url += f"?ref={ref}"
+    status, body = await client.rest_raw("GET", url)
+    if status == 404:
+        raise GitHubWriteError(404, body, f"File not found: {path}")
+    _raise_for_write(status, body, "GET", url, allowed=(200,))
+    if isinstance(body, list):
+        raise GitHubWriteError(200, body, f"Path is a directory, not a file: {path}")
+
+    size = int(body.get("size") or 0)
+    sha = body.get("sha") or ""
+    if size > MAX_EDITABLE_FILE_BYTES:
+        return {
+            "text": None,
+            "sha": sha,
+            "size": size,
+            "encoding": "base64",
+            "truncated": True,
+            "is_binary": False,
+        }
+
+    encoding = body.get("encoding") or "base64"
+    raw = body.get("content") or ""
+    if encoding == "base64":
+        try:
+            blob = base64.b64decode(raw)
+        except Exception as exc:
+            raise GitHubWriteError(200, body, f"Bad base64 for {path}: {exc}") from exc
+    else:
+        blob = raw.encode("utf-8", "replace")
+
+    is_binary = b"\x00" in blob[:4096]
+    text: str | None
+    if is_binary:
+        text = None
+    else:
+        try:
+            text = blob.decode("utf-8")
+        except UnicodeDecodeError:
+            is_binary = True
+            text = None
+
+    return {
+        "text": text,
+        "sha": sha,
+        "size": size,
+        "encoding": "utf-8" if text is not None else "base64",
+        "truncated": False,
+        "is_binary": is_binary,
+    }
+
+
+async def fetch_repo_tree_full(
+    token: str, name_with_owner: str, ref: str
+) -> list[dict[str, Any]]:
+    """Unfiltered blob+tree listing at a specific ref, for the file browser.
+
+    Intentionally uncached because it's scoped to a session's captured
+    base_sha and shouldn't drift across sessions. Returns entries with path,
+    type, size, sha.
+    """
+    client = GitHubClient(token)
+    status, body = await client.rest_raw(
+        "GET", f"/repos/{name_with_owner}/git/trees/{ref}?recursive=1"
+    )
+    _raise_for_write(status, body, "GET", "git/trees", allowed=(200,))
+    tree = (body or {}).get("tree") or []
+    return [
+        {
+            "path": t.get("path", ""),
+            "type": t.get("type", ""),
+            "size": t.get("size") or 0,
+            "sha": t.get("sha", ""),
+        }
+        for t in tree
+        if t.get("type") in ("blob", "tree")
+    ]
+
+
+async def ensure_fork(
+    token: str, upstream: str, viewer_login: str
+) -> dict[str, Any]:
+    """Idempotently ensure the viewer has a fork of `upstream`.
+
+    Steps:
+      1. GET /repos/{viewer}/{name}. If it's a fork of `upstream`, done.
+         If it exists but points elsewhere, raise ForkNameCollision.
+      2. Otherwise POST /repos/{upstream}/forks (202 accepted).
+      3. Poll /repos/{viewer}/{name} up to ~30s until default branch is live.
+
+    Returns {full_name, ready, default_branch}. `ready=False` on timeout —
+    the caller should 503 and let the user retry.
+    """
+    client = GitHubClient(token)
+    _, upstream_name = upstream.split("/", 1)
+    fork_full = f"{viewer_login}/{upstream_name}"
+
+    status, body = await client.rest_raw("GET", f"/repos/{fork_full}")
+    if status == 200:
+        parent = (body.get("parent") or {}).get("full_name")
+        if parent and parent.lower() == upstream.lower():
+            return {
+                "full_name": fork_full,
+                "ready": True,
+                "default_branch": body.get("default_branch") or "main",
+            }
+        raise ForkNameCollision(
+            409,
+            body,
+            f"You already have a repo named {fork_full} that is not a fork of {upstream}. "
+            "Rename it on GitHub and retry.",
+        )
+    if status != 404:
+        _raise_for_write(status, body, "GET", f"/repos/{fork_full}", allowed=(200, 404))
+
+    status, body = await client.rest_raw("POST", f"/repos/{upstream}/forks")
+    _raise_for_write(status, body, "POST", "/forks", allowed=(202,))
+
+    # Fork creation is async; poll until the repo is usable.
+    for _ in range(15):
+        await asyncio.sleep(2.0)
+        s, b = await client.rest_raw("GET", f"/repos/{fork_full}")
+        if s == 200 and b.get("default_branch"):
+            return {
+                "full_name": fork_full,
+                "ready": True,
+                "default_branch": b.get("default_branch"),
+            }
+    return {"full_name": fork_full, "ready": False, "default_branch": None}
+
+
+async def create_blob(
+    token: str, fork_full_name: str, content: str, encoding: str = "utf-8"
+) -> str:
+    client = GitHubClient(token)
+    payload = {"content": content, "encoding": encoding}
+    status, body = await client.rest_raw(
+        "POST", f"/repos/{fork_full_name}/git/blobs", json=payload
+    )
+    _raise_for_write(status, body, "POST", "git/blobs", allowed=(201,))
+    log_github_write(op="create_blob", target=fork_full_name, status=status)
+    return body["sha"]
+
+
+async def create_tree(
+    token: str,
+    fork_full_name: str,
+    base_tree_sha: str,
+    entries: list[dict[str, str]],
+) -> str:
+    """entries: [{path, mode (e.g. "100644"), type ("blob"), sha}]."""
+    client = GitHubClient(token)
+    payload = {"base_tree": base_tree_sha, "tree": entries}
+    status, body = await client.rest_raw(
+        "POST", f"/repos/{fork_full_name}/git/trees", json=payload
+    )
+    _raise_for_write(status, body, "POST", "git/trees", allowed=(201,))
+    log_github_write(op="create_tree", target=fork_full_name, status=status)
+    return body["sha"]
+
+
+async def create_commit(
+    token: str,
+    fork_full_name: str,
+    message: str,
+    tree_sha: str,
+    parent_sha: str,
+) -> str:
+    client = GitHubClient(token)
+    payload = {"message": message, "tree": tree_sha, "parents": [parent_sha]}
+    status, body = await client.rest_raw(
+        "POST", f"/repos/{fork_full_name}/git/commits", json=payload
+    )
+    _raise_for_write(status, body, "POST", "git/commits", allowed=(201,))
+    log_github_write(op="create_commit", target=fork_full_name, status=status)
+    return body["sha"]
+
+
+async def create_or_update_ref(
+    token: str,
+    fork_full_name: str,
+    branch: str,
+    sha: str,
+    force: bool = False,
+) -> None:
+    """Create `refs/heads/{branch}` pointing at `sha`; PATCH if it already exists."""
+    client = GitHubClient(token)
+    status, body = await client.rest_raw(
+        "POST",
+        f"/repos/{fork_full_name}/git/refs",
+        json={"ref": f"refs/heads/{branch}", "sha": sha},
+    )
+    if status == 201:
+        log_github_write(op="create_ref", target=fork_full_name, status=status)
+        return
+    if status == 422:
+        status, body = await client.rest_raw(
+            "PATCH",
+            f"/repos/{fork_full_name}/git/refs/heads/{branch}",
+            json={"sha": sha, "force": force},
+        )
+        _raise_for_write(status, body, "PATCH", f"refs/heads/{branch}", allowed=(200,))
+        log_github_write(op="update_ref", target=fork_full_name, status=status)
+        return
+    _raise_for_write(status, body, "POST", "git/refs", allowed=(201,))
+
+
+async def create_pull_request(
+    token: str,
+    upstream: str,
+    head: str,
+    base: str,
+    title: str,
+    body: str,
+    draft: bool = False,
+) -> dict[str, Any]:
+    """POST /repos/{upstream}/pulls. `head` must be "{user_login}:{branch}"."""
+    client = GitHubClient(token)
+    payload = {"title": title, "head": head, "base": base, "body": body, "draft": draft}
+    status, resp = await client.rest_raw(
+        "POST", f"/repos/{upstream}/pulls", json=payload
+    )
+    _raise_for_write(status, resp, "POST", "/pulls", allowed=(201,))
+    log_github_write(op="create_pr", target=upstream, status=status)
+    return {"url": resp.get("html_url"), "number": resp.get("number")}

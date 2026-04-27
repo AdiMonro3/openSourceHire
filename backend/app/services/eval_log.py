@@ -46,6 +46,18 @@ CREATE TABLE IF NOT EXISTS agent_calls (
 );
 CREATE INDEX IF NOT EXISTS idx_agent_calls_agent ON agent_calls(agent);
 CREATE INDEX IF NOT EXISTS idx_agent_calls_user  ON agent_calls(user_id);
+
+CREATE TABLE IF NOT EXISTS github_writes (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts       REAL    NOT NULL,
+    op       TEXT    NOT NULL,
+    target   TEXT,
+    user_id  INTEGER,
+    status   INTEGER,
+    error    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_github_writes_user ON github_writes(user_id);
+CREATE INDEX IF NOT EXISTS idx_github_writes_op   ON github_writes(op);
 """
 
 _lock = threading.Lock()
@@ -124,4 +136,28 @@ def log_agent_call(
             )
     except Exception:
         # Logging is best-effort; never propagate.
+        pass
+
+
+def log_github_write(
+    *,
+    op: str,
+    target: str | None = None,
+    user_id: int | None = None,
+    status: int | None = None,
+    error: str | None = None,
+) -> None:
+    """Best-effort audit row for every GitHub write (fork, blob, tree, commit, ref, PR)."""
+    if os.environ.get("EVAL_LOG_DISABLED") == "1":
+        return
+    try:
+        with _connect() as con:
+            con.execute(
+                """
+                INSERT INTO github_writes (ts, op, target, user_id, status, error)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (time.time(), op, target, user_id, status, error),
+            )
+    except Exception:
         pass

@@ -36,29 +36,29 @@ export function ProfileCard({
     .slice(0, compact ? 5 : 10);
 
   return (
-    <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+    <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
       <div className="flex flex-col items-start gap-4">
         {user.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={user.avatar_url}
             alt={user.github_login}
-            className="h-16 w-16 rounded-full"
+            className="h-16 w-16 rounded-full ring-1 ring-white/10"
           />
         ) : (
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 text-lg font-semibold text-violet-700">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/15 text-lg font-semibold text-violet-200 ring-1 ring-violet-500/25">
             {initials(user)}
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold tracking-tight text-neutral-900">
+          <h2 className="truncate text-lg font-semibold tracking-tight text-ink">
             {user.name ?? user.github_login}
           </h2>
           <a
             href={`https://github.com/${user.github_login}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-neutral-500 transition hover:text-violet-700"
+            className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-violet-300"
           >
             <GitHubIcon className="h-3.5 w-3.5" />@{user.github_login}
           </a>
@@ -66,14 +66,14 @@ export function ProfileCard({
       </div>
 
       {profile?.summary && (
-        <p className="mt-4 text-sm leading-relaxed text-neutral-700">
+        <p className="mt-4 text-sm leading-relaxed text-ink-muted">
           {profile.summary}
         </p>
       )}
 
       {topSkills.length > 0 && (
         <div className="mt-5 border-t border-surface-border pt-5">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
             Top skills
           </h3>
           <div className="space-y-3">
@@ -86,7 +86,7 @@ export function ProfileCard({
 
       {profile?.interests && profile.interests.length > 0 && (
         <div className="mt-5 border-t border-surface-border pt-5">
-          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
             Interests
           </h3>
           <div className="flex flex-wrap gap-1.5">
@@ -107,10 +107,10 @@ function SkillRow({ skill }: { skill: Skill }) {
   return (
     <div className="group">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate text-sm font-medium text-neutral-800">
+        <span className="truncate text-sm font-medium text-ink">
           {skill.name}
         </span>
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
           L{level}/5
         </span>
       </div>
@@ -120,14 +120,14 @@ function SkillRow({ skill }: { skill: Skill }) {
             key={n}
             className={
               n <= level
-                ? "h-1.5 flex-1 rounded-full bg-violet-500"
-                : "h-1.5 flex-1 rounded-full bg-neutral-200"
+                ? "h-1.5 flex-1 rounded-full bg-violet-400"
+                : "h-1.5 flex-1 rounded-full bg-white/10"
             }
           />
         ))}
       </div>
       {skill.evidence && (
-        <p className="mt-1 text-[11px] text-neutral-500 opacity-0 transition group-hover:opacity-100">
+        <p className="mt-1 text-[11px] text-ink-subtle opacity-0 transition group-hover:opacity-100">
           {skill.evidence}
         </p>
       )}

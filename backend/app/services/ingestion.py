@@ -175,6 +175,18 @@ async def ingest_repo(
     repo = _upsert_repo(db, nodes[0]["repository"], is_curated, is_anti_ai=anti_ai)
     embed_inputs = [_issue_embed_input(n) for n in nodes]
     embeddings = await embed_texts(embed_inputs, input_type="document")
+    if not embeddings:
+        logger.warning(
+            "Skipped %d issues for %s — embedding batch failed",
+            len(nodes), name_with_owner,
+        )
+        return {
+            "repo": name_with_owner,
+            "issues_indexed": 0,
+            "total_count": search.get("issueCount", 0) or 0,
+            "is_anti_ai": anti_ai,
+            "skipped_due_to_embedding": True,
+        }
     for node, emb in zip(nodes, embeddings, strict=True):
         _upsert_issue(db, repo.id, node, emb)
     db.commit()

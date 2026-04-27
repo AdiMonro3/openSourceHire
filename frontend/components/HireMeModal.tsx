@@ -125,19 +125,19 @@ export function HireMeModal({ username, open, onClose }: Props) {
       aria-labelledby="hire-me-title"
     >
       <div
-        className="absolute inset-0 bg-neutral-900/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-surface-border bg-white p-6 shadow-xl animate-fade-in">
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card-hover animate-fade-in">
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h2
               id="hire-me-title"
-              className="text-lg font-semibold tracking-tight text-neutral-900"
+              className="text-lg font-semibold tracking-tight text-ink"
             >
               Reach out to {username}
             </h2>
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="mt-1 text-sm text-ink-muted">
               They&apos;ll receive an email with your message and can reply
               directly.
             </p>
@@ -146,14 +146,14 @@ export function HireMeModal({ username, open, onClose }: Props) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded-full p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            className="rounded-full p-1 text-ink-subtle hover:bg-white/5 hover:text-ink"
           >
             ×
           </button>
         </div>
 
         {status.kind === "sent" ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm text-emerald-200">
             Message sent. They&apos;ll get back to you over email.
             <div className="mt-4">
               <Button variant="secondary" size="sm" onClick={onClose}>
@@ -175,17 +175,17 @@ export function HireMeModal({ username, open, onClose }: Props) {
               placeholder="Acme Inc."
             />
             <div>
-              <label className="mb-1 block text-xs font-medium text-neutral-700">
+              <label className="mb-1 block text-xs font-medium text-ink-muted">
                 Message
               </label>
               <textarea
                 name="body"
                 maxLength={4000}
                 rows={5}
-                className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
                 placeholder="Hi — we're hiring for a backend role and your work on X caught our eye…"
               />
-              <p className="mt-1 text-[11px] text-neutral-400">
+              <p className="mt-1 text-[11px] text-ink-subtle">
                 Minimum 20 characters.
               </p>
             </div>
@@ -201,7 +201,7 @@ export function HireMeModal({ username, open, onClose }: Props) {
             />
 
             {status.kind === "error" && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
                 {status.message}
               </div>
             )}
@@ -244,14 +244,14 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-neutral-700">
+      <label className="mb-1 block text-xs font-medium text-ink-muted">
         {label}
       </label>
       <input
         name={name}
         type={type}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-surface-border bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+        className="w-full rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
       />
     </div>
   );

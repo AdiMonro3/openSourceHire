@@ -124,7 +124,7 @@ export default function ProfilePage() {
       <div className="min-h-screen bg-surface">
         <Navbar user={me} />
         <main className="mx-auto max-w-6xl px-6 py-10">
-          <div className="h-48 rounded-2xl border border-surface-border bg-white shimmer" />
+          <div className="h-48 rounded-2xl border border-surface-border bg-surface-raised shimmer" />
         </main>
       </div>
     );
@@ -145,7 +145,7 @@ export default function ProfilePage() {
 
       <main className="mx-auto max-w-6xl px-6 py-8 sm:py-10">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
             Profile
           </h1>
           <Button
@@ -159,17 +159,17 @@ export default function ProfilePage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
             {error}
           </div>
         )}
 
         {needsProfile ? (
-          <div className="rounded-2xl border border-dashed border-surface-border bg-white/60 p-10 text-center">
-            <h3 className="text-base font-semibold text-neutral-900">
+          <div className="rounded-2xl border border-dashed border-surface-border bg-surface-raised/40 p-10 text-center">
+            <h3 className="text-base font-semibold text-ink">
               No profile yet
             </h3>
-            <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">
+            <p className="mx-auto mt-2 max-w-md text-sm text-ink-muted">
               Build your skill graph from your public GitHub history. Takes
               about 10 seconds.
             </p>
@@ -187,29 +187,29 @@ export default function ProfilePage() {
           <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
             {/* Left column */}
             <aside className="space-y-5">
-              <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+              <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
                 <div className="flex flex-col items-start gap-3">
                   {avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={avatar}
                       alt={me.github_login}
-                      className="h-16 w-16 rounded-full"
+                      className="h-16 w-16 rounded-full ring-1 ring-white/10"
                     />
                   ) : (
-                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 text-lg font-semibold text-violet-700">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/15 text-lg font-semibold text-violet-200 ring-1 ring-violet-500/25">
                       {initials(displayName)}
                     </span>
                   )}
                   <div>
-                    <h2 className="text-lg font-semibold text-neutral-900">
+                    <h2 className="text-lg font-semibold text-ink">
                       {displayName}
                     </h2>
                     <a
                       href={`https://github.com/${me.github_login}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm text-neutral-500 transition hover:text-violet-700"
+                      className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-violet-300"
                     >
                       <GitHubIcon className="h-3.5 w-3.5" />@{me.github_login}
                     </a>
@@ -217,13 +217,13 @@ export default function ProfilePage() {
                 </div>
 
                 {(profile?.summary || bio) && (
-                  <p className="mt-4 text-sm leading-relaxed text-neutral-700">
+                  <p className="mt-4 text-sm leading-relaxed text-ink-muted">
                     {profile?.summary ?? bio}
                   </p>
                 )}
 
                 {location && (
-                  <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-neutral-500">
+                  <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-ink-muted">
                     <span aria-hidden>📍</span>
                     {location}
                   </p>
@@ -232,18 +232,18 @@ export default function ProfilePage() {
                 {portfolio && (
                   <dl className="mt-4 flex gap-6 border-t border-surface-border pt-4">
                     <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
                         followers
                       </dt>
-                      <dd className="mt-0.5 font-mono text-base font-semibold text-neutral-900">
+                      <dd className="mt-0.5 font-mono text-base font-semibold text-ink">
                         {portfolio.user.followers.toLocaleString()}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
                         repos
                       </dt>
-                      <dd className="mt-0.5 font-mono text-base font-semibold text-neutral-900">
+                      <dd className="mt-0.5 font-mono text-base font-semibold text-ink">
                         {portfolio.user.repos.toLocaleString()}
                       </dd>
                     </div>
@@ -251,12 +251,12 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
-                <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+              <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
+                <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
                   Top skills
                 </h3>
                 {skills.length === 0 ? (
-                  <p className="text-sm text-neutral-500">
+                  <p className="text-sm text-ink-muted">
                     No skills detected yet.
                   </p>
                 ) : (
@@ -269,8 +269,8 @@ export default function ProfilePage() {
               </div>
 
               {profile?.interests && profile.interests.length > 0 && (
-                <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
-                  <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
+                  <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
                     Interests
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
@@ -286,19 +286,19 @@ export default function ProfilePage() {
 
             {/* Right column */}
             <section className="space-y-5">
-              <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+              <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
                 {portfolio ? (
                   <ContributionHeatmap
                     weeks={portfolio.contributions.weeks}
                     total={portfolio.contributions.total}
                   />
                 ) : (
-                  <div className="h-32 rounded-xl bg-neutral-50 shimmer" />
+                  <div className="h-32 rounded-xl bg-white/5 shimmer" />
                 )}
               </div>
 
-              <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
-                <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+              <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
+                <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
                   Latest merged PRs
                 </h3>
                 {portfolio?.merged_prs?.length ? (
@@ -312,21 +312,21 @@ export default function ProfilePage() {
                           className="group flex items-start justify-between gap-4"
                         >
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 text-sm font-medium text-neutral-900 group-hover:text-violet-700">
-                              <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                            <div className="flex items-center gap-2 text-sm font-medium text-ink group-hover:text-violet-300">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
                               <span className="truncate">{pr.title}</span>
                             </div>
-                            <div className="ml-4 mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-neutral-500">
+                            <div className="ml-4 mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
                               <span className="font-mono">{pr.repo.name}</span>
                               <span>·</span>
                               <span>{fmtMonth(pr.merged_at)}</span>
                             </div>
                           </div>
                           <div className="shrink-0 font-mono text-xs tabular-nums">
-                            <span className="text-emerald-600">
+                            <span className="text-emerald-300">
                               +{pr.additions}
                             </span>{" "}
-                            <span className="text-red-500">
+                            <span className="text-red-300">
                               −{pr.deletions}
                             </span>
                           </div>
@@ -335,7 +335,7 @@ export default function ProfilePage() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-neutral-500">
+                  <p className="text-sm text-ink-muted">
                     No merged PRs found in your public history yet.
                   </p>
                 )}
@@ -381,32 +381,32 @@ function CliTokenPanel() {
   }
 
   return (
-    <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+    <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-base font-semibold tracking-tight text-neutral-900">
+        <h2 className="text-base font-semibold tracking-tight text-ink">
           CLI token
         </h2>
-        <code className="font-mono text-[10px] text-neutral-400">osh login</code>
+        <code className="font-mono text-[10px] text-ink-subtle">osh login</code>
       </div>
-      <p className="mb-4 text-sm text-neutral-500">
+      <p className="mb-4 text-sm text-ink-muted">
         Generate a token to authenticate the{" "}
-        <code className="font-mono text-neutral-700">osh</code> CLI. Generating
+        <code className="font-mono text-ink">osh</code> CLI. Generating
         again rotates the token; the old one stops working.
       </p>
       {token ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <code className="flex-1 truncate rounded-lg border border-surface-border bg-surface-muted px-3 py-2 font-mono text-xs text-neutral-800">
+            <code className="flex-1 truncate rounded-lg border border-surface-border bg-surface px-3 py-2 font-mono text-xs text-ink">
               {token}
             </code>
             <button
               onClick={copy}
-              className="rounded-lg border border-surface-border bg-white px-3 py-2 text-xs text-neutral-700 transition hover:text-violet-700"
+              className="rounded-lg border border-surface-border bg-surface-raised px-3 py-2 text-xs text-ink-muted transition hover:border-surface-border-strong hover:text-ink"
             >
               {copied ? "copied" : "copy"}
             </button>
           </div>
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-amber-300">
             Copy this now — it won&apos;t be shown again.
           </p>
         </div>
@@ -415,7 +415,7 @@ function CliTokenPanel() {
           Generate token
         </Button>
       )}
-      {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
     </div>
   );
 }
@@ -425,10 +425,10 @@ function SkillRow({ skill }: { skill: Skill }) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate text-sm font-medium text-neutral-800">
+        <span className="truncate text-sm font-medium text-ink">
           {skill.name}
         </span>
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
           L{level}/5
         </span>
       </div>
@@ -438,8 +438,8 @@ function SkillRow({ skill }: { skill: Skill }) {
             key={n}
             className={
               n <= level
-                ? "h-1.5 flex-1 rounded-full bg-violet-500"
-                : "h-1.5 flex-1 rounded-full bg-neutral-200"
+                ? "h-1.5 flex-1 rounded-full bg-violet-400"
+                : "h-1.5 flex-1 rounded-full bg-white/10"
             }
           />
         ))}

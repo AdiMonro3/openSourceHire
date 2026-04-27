@@ -18,13 +18,13 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-violet-600 text-white shadow-[0_1px_0_0_rgba(255,255,255,0.25)_inset,0_4px_14px_-4px_rgba(124,58,237,0.55)] hover:bg-violet-700",
+    "bg-violet-500 text-white shadow-[0_1px_0_0_rgba(255,255,255,0.2)_inset,0_8px_28px_-8px_rgba(139,92,246,0.75)] hover:bg-violet-400",
   secondary:
-    "border border-surface-border bg-white text-neutral-900 hover:bg-surface-hover hover:border-neutral-300",
+    "border border-surface-border bg-surface-raised text-ink hover:bg-surface-hover hover:border-surface-border-strong",
   ghost:
-    "text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100",
+    "text-ink-muted hover:text-ink hover:bg-white/5",
   danger:
-    "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100",
+    "border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15 hover:border-red-500/50",
 };
 
 const sizes: Record<Size, string> = {
@@ -59,8 +59,8 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
           className={clsx(
             "inline-block h-3.5 w-3.5 animate-spin rounded-full border-2",
             variant === "primary"
-              ? "border-white/40 border-t-white"
-              : "border-neutral-300 border-t-neutral-700",
+              ? "border-white/30 border-t-white"
+              : "border-white/10 border-t-ink",
           )}
         />
       ) : (

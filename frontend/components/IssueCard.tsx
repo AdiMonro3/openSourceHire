@@ -22,28 +22,31 @@ export type IssueCardData = {
 };
 
 function languageDot(lang?: string | null) {
-  if (!lang) return "bg-neutral-300";
+  if (!lang) return "bg-white/20";
   const map: Record<string, string> = {
-    TypeScript: "bg-sky-500",
-    JavaScript: "bg-amber-400",
-    Python: "bg-blue-500",
-    Go: "bg-cyan-500",
-    Rust: "bg-orange-500",
-    Java: "bg-red-500",
-    C: "bg-neutral-500",
-    "C++": "bg-pink-500",
-    Ruby: "bg-rose-500",
-    Swift: "bg-orange-400",
+    TypeScript: "bg-sky-400",
+    JavaScript: "bg-amber-300",
+    Python: "bg-blue-400",
+    Go: "bg-cyan-400",
+    Rust: "bg-orange-400",
+    Java: "bg-red-400",
+    C: "bg-neutral-400",
+    "C++": "bg-pink-400",
+    Ruby: "bg-rose-400",
+    Swift: "bg-orange-300",
   };
   return map[lang] ?? "bg-violet-400";
 }
 
 function matchTone(score?: number): { text: string; ring: string } {
-  if (score == null) return { text: "text-neutral-500", ring: "ring-neutral-200" };
-  if (score >= 90) return { text: "text-violet-700", ring: "ring-violet-200" };
-  if (score >= 80) return { text: "text-emerald-600", ring: "ring-emerald-200" };
-  if (score >= 70) return { text: "text-sky-600", ring: "ring-sky-200" };
-  return { text: "text-neutral-600", ring: "ring-neutral-200" };
+  if (score == null)
+    return { text: "text-ink-muted", ring: "ring-surface-border" };
+  if (score >= 90)
+    return { text: "text-violet-300", ring: "ring-violet-500/40" };
+  if (score >= 80)
+    return { text: "text-emerald-300", ring: "ring-emerald-500/40" };
+  if (score >= 70) return { text: "text-sky-300", ring: "ring-sky-500/40" };
+  return { text: "text-ink-muted", ring: "ring-surface-border" };
 }
 
 export function IssueCard({ item }: { item: IssueCardData }) {
@@ -53,15 +56,15 @@ export function IssueCard({ item }: { item: IssueCardData }) {
       href={`/dashboard/issues/${item.id}`}
       className="group block"
     >
-      <article className="relative overflow-hidden rounded-2xl border border-surface-border bg-white p-5 shadow-card transition-all duration-150 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md">
+      <article className="relative overflow-hidden rounded-2xl border border-surface-border bg-surface-raised p-5 shadow-card transition-all duration-150 hover:-translate-y-0.5 hover:border-surface-border-strong hover:bg-surface-hover hover:shadow-card-hover">
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
-              <span className="truncate font-mono text-neutral-700">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+              <span className="truncate font-mono text-ink">
                 {item.repo.name}
               </span>
               <span className="inline-flex items-center gap-1">
-                <StarIcon className="h-3 w-3 text-amber-500" />
+                <StarIcon className="h-3 w-3 text-amber-400" />
                 {(item.repo.stars >= 1000
                   ? `${Math.round(item.repo.stars / 1000)}k`
                   : item.repo.stars.toLocaleString())}
@@ -82,13 +85,13 @@ export function IssueCard({ item }: { item: IssueCardData }) {
               )}
             </div>
 
-            <h3 className="mt-2 text-base font-semibold leading-snug tracking-tight text-neutral-900 group-hover:text-violet-700">
+            <h3 className="mt-2 text-base font-semibold leading-snug tracking-tight text-ink group-hover:text-violet-300">
               {item.title}
             </h3>
 
             {item.reason && (
-              <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-                <span className="text-neutral-400">Why · </span>
+              <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+                <span className="text-ink-subtle">Why · </span>
                 {item.reason}
               </p>
             )}
@@ -109,12 +112,11 @@ export function IssueCard({ item }: { item: IssueCardData }) {
 
           <div
             className={clsx(
-              "flex shrink-0 flex-col items-center justify-center rounded-2xl border bg-white px-4 py-3 ring-1",
-              "border-neutral-100",
+              "flex shrink-0 flex-col items-center justify-center rounded-2xl border border-surface-border bg-surface px-4 py-3 ring-1",
               tone.ring,
             )}
           >
-            <span className="text-[9px] font-semibold uppercase tracking-wider text-neutral-500">
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-ink-subtle">
               match
             </span>
             <span

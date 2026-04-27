@@ -28,3 +28,7 @@
 ## Build priority
 
 P0 → P1 → P2. See [the plan](../../../.claude/plans/plan-this-project-in-sprightly-prism.md).
+
+## Deep reference
+
+For an end-to-end study guide with 15 Mermaid diagrams, file:line citations, every feature workflow, and a build script that produces a PDF, see [study-plan.md](./study-plan.md) (rendered: [study-plan.pdf](./study-plan.pdf)).

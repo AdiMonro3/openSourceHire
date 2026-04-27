@@ -17,11 +17,11 @@ function bucket(count: number): number {
 }
 
 const LEVEL_CLASS = [
-  "bg-neutral-100",
-  "bg-violet-200",
-  "bg-violet-400",
-  "bg-violet-500",
-  "bg-violet-700",
+  "bg-white/[0.04] ring-1 ring-inset ring-white/[0.03]",
+  "bg-violet-500/30",
+  "bg-violet-500/55",
+  "bg-violet-400/85",
+  "bg-violet-300",
 ];
 
 export function ContributionHeatmap({
@@ -47,10 +47,10 @@ export function ContributionHeatmap({
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
           Contributions
         </h3>
-        <span className="text-xs text-neutral-500">
+        <span className="text-xs text-ink-muted">
           {total.toLocaleString()} in the last year
         </span>
       </div>
@@ -59,7 +59,7 @@ export function ContributionHeatmap({
         <div className="inline-block">
           {/* month labels */}
           <div
-            className="grid pl-1 pr-1 text-[10px] text-neutral-400"
+            className="grid pl-1 pr-1 text-[10px] text-ink-subtle"
             style={{
               gridTemplateColumns: `repeat(${weeks.length}, 12px)`,
               columnGap: 3,
@@ -113,7 +113,7 @@ export function ContributionHeatmap({
         </div>
       </div>
 
-      <div className="mt-2 flex items-center justify-end gap-1.5 text-[10px] text-neutral-500">
+      <div className="mt-2 flex items-center justify-end gap-1.5 text-[10px] text-ink-subtle">
         <span>Less</span>
         {LEVEL_CLASS.map((c, i) => (
           <span

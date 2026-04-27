@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { use, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { use, useCallback, useEffect, useState } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import clsx from "clsx";
 import { api, ApiError } from "@/lib/api-client";
 import { Navbar } from "@/components/Navbar";
@@ -13,6 +15,20 @@ import {
   SparklesIcon,
   StarIcon,
 } from "@/components/Icons";
+
+const FixWorkspace = dynamic(
+  () => import("@/components/fix/FixWorkspace").then((m) => m.FixWorkspace),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[60vh] items-center justify-center text-sm text-ink-subtle">
+        Loading the browser editor…
+      </div>
+    ),
+  },
+);
+
+type Tab = "plan" | "fix" | "coach";
 
 type IssueDetail = {
   id: number;
@@ -70,11 +86,11 @@ const DIFFICULTY_TONE: Record<
 };
 
 function matchTone(score?: number | null) {
-  if (score == null) return "text-neutral-600";
-  if (score >= 90) return "text-violet-700";
-  if (score >= 80) return "text-emerald-600";
-  if (score >= 70) return "text-sky-600";
-  return "text-neutral-600";
+  if (score == null) return "text-ink-muted";
+  if (score >= 90) return "text-violet-300";
+  if (score >= 80) return "text-emerald-300";
+  if (score >= 70) return "text-sky-300";
+  return "text-ink-muted";
 }
 
 export default function IssueDetailPage({
@@ -83,11 +99,28 @@ export default function IssueDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const issueIdNum = Number(id);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab: Tab =
+    tabParam === "fix" || tabParam === "coach" ? tabParam : "plan";
+
+  const setTab = (t: Tab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (t === "plan") params.delete("tab");
+    else params.set("tab", t);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+
   const [me, setMe] = useState<Me | null>(null);
   const [issue, setIssue] = useState<IssueDetail | null>(null);
   const [understanding, setUnderstanding] = useState<Understanding | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingUnderstand, setLoadingUnderstand] = useState(true);
+  const [understandError, setUnderstandError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [coach, setCoach] = useState<CoachOutput | null>(null);
   const [loadingCoach, setLoadingCoach] = useState(false);
@@ -126,14 +159,24 @@ export default function IssueDetailPage({
       });
   }, [id]);
 
+  const fetchUnderstanding = useCallback(() => {
+    setLoadingUnderstand(true);
+    setUnderstandError(null);
+    api<Understanding>(`/issues/${id}/understand`)
+      .then((u) => {
+        setUnderstanding(u);
+        setUnderstandError(null);
+      })
+      .catch((e) =>
+        setUnderstandError(e instanceof Error ? e.message : String(e)),
+      )
+      .finally(() => setLoadingUnderstand(false));
+  }, [id]);
+
   useEffect(() => {
     if (!issue) return;
-    setLoadingUnderstand(true);
-    api<Understanding>(`/issues/${id}/understand`)
-      .then(setUnderstanding)
-      .catch((e) => setError(e.message ?? String(e)))
-      .finally(() => setLoadingUnderstand(false));
-  }, [id, issue]);
+    fetchUnderstanding();
+  }, [issue, fetchUnderstanding]);
 
   return (
     <div className="min-h-screen bg-surface">
@@ -142,37 +185,37 @@ export default function IssueDetailPage({
       <main className="mx-auto max-w-6xl px-6 py-8 sm:py-10">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs text-neutral-500 transition hover:text-neutral-900"
+          className="inline-flex items-center gap-1.5 text-xs text-ink-muted transition hover:text-ink"
         >
           <ArrowLeftIcon className="h-3.5 w-3.5" />
           Back to feed
         </Link>
 
         {error && (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
             {error}
           </div>
         )}
 
         {!issue && !error && (
-          <div className="mt-6 h-40 rounded-2xl border border-surface-border bg-white shimmer" />
+          <div className="mt-6 h-40 rounded-2xl border border-surface-border bg-surface-raised shimmer" />
         )}
 
         {issue && (
           <>
             {/* Issue header */}
             <header className="mt-4">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
-                <span className="font-mono text-neutral-700">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+                <span className="font-mono text-ink">
                   {issue.repo.name}
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <StarIcon className="h-3 w-3 text-amber-500" />
+                  <StarIcon className="h-3 w-3 text-amber-400" />
                   {(issue.repo.stars >= 1000
                     ? `${Math.round(issue.repo.stars / 1000)}k`
                     : issue.repo.stars.toLocaleString())}
                 </span>
-                <span className="font-mono text-neutral-500">
+                <span className="font-mono text-ink-subtle">
                   #{issue.number}
                 </span>
                 {issue.labels.slice(0, 4).map((l) => (
@@ -183,14 +226,14 @@ export default function IssueDetailPage({
                 ) : null}
               </div>
 
-              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-neutral-900 sm:text-[28px]">
+              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink sm:text-[28px]">
                 {issue.title}
               </h1>
 
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 {issue.score != null && (
-                  <div className="inline-flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-3 py-1.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-700">
+                  <div className="inline-flex items-center gap-3 rounded-xl border border-violet-500/25 bg-violet-500/10 px-3 py-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-200">
                       match
                     </span>
                     <span
@@ -204,8 +247,8 @@ export default function IssueDetailPage({
                   </div>
                 )}
                 {issue.reason && (
-                  <p className="text-sm text-neutral-600">
-                    <span className="text-neutral-400">Why you · </span>
+                  <p className="text-sm text-ink-muted">
+                    <span className="text-ink-subtle">Why you · </span>
                     {issue.reason}
                   </p>
                 )}
@@ -221,26 +264,57 @@ export default function IssueDetailPage({
               </div>
             </header>
 
-            {/* Two-column: description + AI fix plan */}
+            {/* Tabs */}
+            <div className="mt-6 flex items-center gap-1 border-b border-surface-border">
+              <TabButton
+                active={activeTab === "plan"}
+                onClick={() => setTab("plan")}
+              >
+                Plan
+              </TabButton>
+              <TabButton
+                active={activeTab === "fix"}
+                onClick={() => setTab("fix")}
+                accent
+              >
+                <SparklesIcon className="h-3.5 w-3.5" />
+                Fix in browser
+                <Badge tone="accent">new</Badge>
+              </TabButton>
+              <TabButton
+                active={activeTab === "coach"}
+                onClick={() => setTab("coach")}
+              >
+                PR coach
+              </TabButton>
+            </div>
+
+            {activeTab === "fix" && (
+              <div className="mt-6">
+                <FixWorkspace issueId={issueIdNum} />
+              </div>
+            )}
+
+            {activeTab === "plan" && (
             <div className="mt-6 grid gap-5 lg:grid-cols-2">
-              <section className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+              <section className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
                   Issue description
                 </div>
                 {issue.body ? (
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-neutral-800">
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink-muted">
                     {issue.body}
                   </p>
                 ) : (
-                  <p className="mt-3 text-sm text-neutral-500">
+                  <p className="mt-3 text-sm text-ink-subtle">
                     No description provided.
                   </p>
                 )}
               </section>
 
-              <section className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+              <section className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
                 <div className="flex items-center justify-between">
-                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-violet-700">
+                  <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-violet-300">
                     <SparklesIcon className="h-3.5 w-3.5" />
                     AI fix plan
                   </div>
@@ -252,23 +326,45 @@ export default function IssueDetailPage({
                 </div>
 
                 {loadingUnderstand && (
-                  <p className="mt-4 text-sm text-neutral-500">
+                  <p className="mt-4 text-sm text-ink-subtle">
                     Reading the repo and drafting a plan… (usually 10–30s,
                     cached after).
                   </p>
                 )}
 
+                {!loadingUnderstand && understandError && !understanding && (
+                  <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 animate-fade-in">
+                    <p className="text-sm text-red-300">
+                      Couldn&apos;t draft the AI fix plan.
+                    </p>
+                    <p className="mt-1 break-words text-xs text-red-300/80">
+                      {understandError}
+                    </p>
+                    <div className="mt-3">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={fetchUnderstanding}
+                        loading={loadingUnderstand}
+                        leadingIcon={<SparklesIcon className="h-3.5 w-3.5" />}
+                      >
+                        Retry AI fix plan
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {understanding && (
                   <div className="mt-4 space-y-5 animate-fade-in">
                     {understanding.plain_summary && (
-                      <p className="text-sm leading-relaxed text-neutral-700">
+                      <p className="text-sm leading-relaxed text-ink-muted">
                         {understanding.plain_summary}
                       </p>
                     )}
 
                     {understanding.approach.length > 0 && (
                       <PlanSection title="Approach">
-                        <ol className="list-decimal space-y-1.5 pl-5 text-sm text-neutral-700">
+                        <ol className="list-decimal space-y-1.5 pl-5 text-sm text-ink-muted">
                           {understanding.approach.map((s, i) => (
                             <li key={i}>{s}</li>
                           ))}
@@ -278,14 +374,14 @@ export default function IssueDetailPage({
 
                     {understanding.likely_files.length > 0 && (
                       <PlanSection title="Key files">
-                        <ul className="space-y-1.5 text-sm text-neutral-700">
+                        <ul className="space-y-1.5 text-sm text-ink-muted">
                           {understanding.likely_files.map((f) => (
                             <li
                               key={f}
                               className="flex items-start gap-2 leading-relaxed"
                             >
-                              <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-neutral-400" />
-                              <code className="rounded-md bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-neutral-800">
+                              <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-ink-subtle" />
+                              <code className="rounded-md border border-surface-border bg-surface px-1.5 py-0.5 font-mono text-xs text-ink">
                                 {f}
                               </code>
                             </li>
@@ -296,7 +392,7 @@ export default function IssueDetailPage({
 
                     {understanding.gotchas.length > 0 && (
                       <PlanSection title="Watch-outs">
-                        <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-700">
+                        <ul className="list-disc space-y-1.5 pl-5 text-sm text-ink-muted">
                           {understanding.gotchas.map((g, i) => (
                             <li key={i}>{g}</li>
                           ))}
@@ -306,7 +402,7 @@ export default function IssueDetailPage({
 
                     {understanding.clarifying_questions.length > 0 && (
                       <PlanSection title="Ask the maintainer">
-                        <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-700">
+                        <ul className="list-disc space-y-1.5 pl-5 text-sm text-ink-muted">
                           {understanding.clarifying_questions.map((q, i) => (
                             <li key={i}>{q}</li>
                           ))}
@@ -317,14 +413,15 @@ export default function IssueDetailPage({
                 )}
               </section>
             </div>
+            )}
 
-            {/* PR Coach */}
-            <section className="mt-6 rounded-2xl border border-surface-border bg-white p-6 shadow-card">
-              <div className="mb-3 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-violet-700">
+            {activeTab === "coach" && (
+            <section className="mt-6 rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
+              <div className="mb-3 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-violet-300">
                 <SparklesIcon className="h-3.5 w-3.5" />
                 PR coach
               </div>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-ink-muted">
                 Describe what you changed in plain English. The coach drafts a
                 commit + PR description matching this repo&apos;s house style.
                 Nothing is submitted to GitHub.
@@ -334,7 +431,7 @@ export default function IssueDetailPage({
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="e.g. Fixed the null check in parse_config so missing env vars fall back to defaults instead of crashing…"
                 rows={5}
-                className="mt-4 w-full resize-y rounded-lg border border-surface-border bg-surface-muted px-3 py-2 font-mono text-sm text-neutral-900 outline-none transition focus:border-violet-400"
+                className="mt-4 w-full resize-y rounded-lg border border-surface-border bg-surface px-3 py-2 font-mono text-sm text-ink placeholder:text-ink-subtle outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-500/30"
               />
               <div className="mt-3 flex items-center gap-3">
                 <Button
@@ -346,7 +443,7 @@ export default function IssueDetailPage({
                   Draft PR
                 </Button>
                 {coachError && (
-                  <span className="text-xs text-red-600">{coachError}</span>
+                  <span className="text-xs text-red-300">{coachError}</span>
                 )}
               </div>
 
@@ -365,7 +462,7 @@ export default function IssueDetailPage({
 
                   {coach.checklist.length > 0 && (
                     <PlanSection title="Before you open the PR">
-                      <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-700">
+                      <ul className="list-disc space-y-1.5 pl-5 text-sm text-ink-muted">
                         {coach.checklist.map((c, i) => (
                           <li key={i}>{c}</li>
                         ))}
@@ -374,7 +471,7 @@ export default function IssueDetailPage({
                   )}
                   {coach.questions_for_contributor.length > 0 && (
                     <PlanSection title="Open questions">
-                      <ul className="list-disc space-y-1.5 pl-5 text-sm text-neutral-700">
+                      <ul className="list-disc space-y-1.5 pl-5 text-sm text-ink-muted">
                         {coach.questions_for_contributor.map((q, i) => (
                           <li key={i}>{q}</li>
                         ))}
@@ -384,10 +481,39 @@ export default function IssueDetailPage({
                 </div>
               )}
             </section>
+            )}
           </>
         )}
       </main>
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  accent = false,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  accent?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={clsx(
+        "inline-flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm transition",
+        active
+          ? accent
+            ? "border-violet-400 text-violet-200"
+            : "border-ink text-ink"
+          : "border-transparent text-ink-muted hover:text-ink",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -413,20 +539,20 @@ function CoachField({
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-neutral-900">{label}</h3>
+        <h3 className="text-sm font-semibold text-ink">{label}</h3>
         <button
           onClick={copy}
-          className="text-xs text-neutral-500 transition hover:text-violet-700"
+          className="text-xs text-ink-muted transition hover:text-violet-300"
         >
           {copied ? "copied" : "copy"}
         </button>
       </div>
       {multiline ? (
-        <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-surface-border bg-surface-muted p-3 font-mono text-xs leading-relaxed text-neutral-800">
+        <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-surface-border bg-surface p-3 font-mono text-xs leading-relaxed text-ink">
           {value}
         </pre>
       ) : (
-        <code className="block rounded-lg border border-surface-border bg-surface-muted px-3 py-2 font-mono text-xs text-neutral-800">
+        <code className="block rounded-lg border border-surface-border bg-surface px-3 py-2 font-mono text-xs text-ink">
           {value}
         </code>
       )}
@@ -443,7 +569,7 @@ function PlanSection({
 }) {
   return (
     <div>
-      <h3 className="mb-2 text-sm font-semibold text-neutral-900">{title}</h3>
+      <h3 className="mb-2 text-sm font-semibold text-ink">{title}</h3>
       {children}
     </div>
   );

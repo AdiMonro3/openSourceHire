@@ -1,5 +1,6 @@
 from app.models.base import Base
 from app.models.contact import ContactMessage
+from app.models.fix_session import FixFile, FixSession
 from app.models.issue import Issue
 from app.models.portfolio import PortfolioRow, Testimonial
 from app.models.repo import Repo
@@ -15,4 +16,6 @@ __all__ = [
     "PortfolioRow",
     "Testimonial",
     "ContactMessage",
+    "FixSession",
+    "FixFile",
 ]

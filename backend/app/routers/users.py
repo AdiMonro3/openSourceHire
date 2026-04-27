@@ -45,11 +45,17 @@ async def refresh_profile(
 
     row = db.get(SkillProfileRow, user.id)
     if row is None:
+        if not embedding:
+            raise HTTPException(
+                status_code=503,
+                detail="Embedding service is rate-limited. Try again in a minute.",
+            )
         row = SkillProfileRow(user_id=user.id, profile=profile, embedding=embedding)
         db.add(row)
     else:
         row.profile = profile
-        row.embedding = embedding
+        if embedding:
+            row.embedding = embedding
     db.commit()
     return profile
 

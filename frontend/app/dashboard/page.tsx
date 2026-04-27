@@ -88,10 +88,10 @@ export default function DashboardPage() {
       <div className="relative min-h-screen overflow-hidden bg-surface">
         <div aria-hidden className="absolute inset-0 bg-hero-glow" />
         <main className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center gap-5 px-6 py-16 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
             You&apos;re not signed in
           </h1>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-ink-muted">
             Continue with GitHub to load your matched issues.
           </p>
           <a href="/login" className="mx-auto">
@@ -125,10 +125,10 @@ export default function DashboardPage() {
         {/* Page header */}
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
+            <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
               Your issue feed
             </h1>
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="mt-1 text-sm text-ink-muted">
               AI-ranked by your skill graph · Updated {relativeTime(updatedAt)}
             </p>
           </div>
@@ -166,7 +166,7 @@ export default function DashboardPage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
             {error}
           </div>
         )}
@@ -195,7 +195,7 @@ export default function DashboardPage() {
             body={
               <>
                 Run{" "}
-                <code className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-neutral-700">
+                <code className="rounded border border-surface-border bg-surface px-1.5 py-0.5 font-mono text-xs text-ink">
                   POST /admin/ingest?repos=5&amp;limit=5
                 </code>{" "}
                 to populate, then refresh your skill profile.
@@ -228,9 +228,9 @@ function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-surface-border bg-white/60 p-10 text-center">
-      <h3 className="text-base font-semibold text-neutral-900">{title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">{body}</p>
+    <div className="rounded-2xl border border-dashed border-surface-border bg-surface-raised/40 p-10 text-center">
+      <h3 className="text-base font-semibold text-ink">{title}</h3>
+      <p className="mx-auto mt-2 max-w-md text-sm text-ink-muted">{body}</p>
       {action && <div className="mt-5 flex justify-center">{action}</div>}
     </div>
   );
@@ -242,7 +242,7 @@ function FeedSkeleton() {
       {[0, 1, 2].map((i) => (
         <li
           key={i}
-          className="h-32 rounded-2xl border border-surface-border bg-white shimmer"
+          className="h-32 rounded-2xl border border-surface-border bg-surface-raised shimmer"
         />
       ))}
     </ul>

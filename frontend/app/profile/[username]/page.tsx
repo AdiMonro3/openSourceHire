@@ -105,12 +105,13 @@ export default async function PublicProfilePage({
   const prs = data.portfolio.merged_prs ?? [];
 
   return (
-    <div className="min-h-screen bg-surface">
-      <header className="border-b border-surface-border bg-white/80 backdrop-blur-xl">
+    <div className="relative min-h-screen bg-surface">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-hero-glow" />
+      <header className="relative z-10 border-b border-surface-border bg-surface/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link
             href="/"
-            className="flex items-center gap-2 text-neutral-900 transition hover:opacity-90"
+            className="flex items-center gap-2 text-ink transition hover:opacity-90"
           >
             <LogoMark className="h-7 w-7" />
             <span className="text-sm font-semibold tracking-tight">
@@ -121,7 +122,7 @@ export default async function PublicProfilePage({
             <HireMeButton username={data.user.github_login} />
             <Link
               href="/login?intent=publish"
-              className="text-xs text-neutral-500 transition hover:text-neutral-900"
+              className="text-xs text-ink-muted transition hover:text-ink"
             >
               Get your own profile →
             </Link>
@@ -129,14 +130,14 @@ export default async function PublicProfilePage({
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl gap-8 px-6 py-8 sm:py-10 lg:grid-cols-[320px,1fr]">
+      <main className="relative z-10 mx-auto grid max-w-6xl gap-8 px-6 py-8 sm:py-10 lg:grid-cols-[320px,1fr]">
         <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
           <ProfileCard
             user={data.user}
             profile={data.skill_profile ?? undefined}
           />
           {weeks.length > 0 && (
-            <div className="rounded-2xl border border-surface-border bg-white p-6 shadow-card">
+            <div className="rounded-2xl border border-surface-border bg-surface-raised p-6 shadow-card">
               <ContributionHeatmap weeks={weeks} total={total} />
             </div>
           )}
@@ -168,7 +169,7 @@ export default async function PublicProfilePage({
           <TestimonialsList items={data.testimonials} />
 
           {data.generated_at && (
-            <p className="text-right text-[10px] text-neutral-400">
+            <p className="text-right text-[10px] text-ink-subtle">
               Last updated{" "}
               {new Date(data.generated_at).toLocaleDateString("en", {
                 month: "short",
