@@ -1,0 +1,42 @@
+name: Ingest beginner issues
+
+# Refreshes the issue feed by running backend/app/scripts/ingest.py against the
+# production Neon DB. Runs on a schedule and can be triggered manually.
+on:
+  schedule:
+    # Every 6 hours. Beginner issues move slowly; tighten the cron if you want.
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Issues to pull per repo"
+        required: false
+        default: "20"
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    # Default per-repo limit for scheduled runs; overridden by manual input.
+    env:
+      PER_REPO_LIMIT: ${{ github.event.inputs.limit || '15' }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      REDIS_URL: ${{ secrets.REDIS_URL }}
+      VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+      # GitHub forbids secrets named GITHUB_*, so the PAT is stored as
+      # INGEST_GH_TOKEN and mapped to the env var the app expects.
+      GITHUB_SERVICE_TOKEN: ${{ secrets.INGEST_GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        working-directory: backend
+        run: uv sync --frozen --no-dev
+
+      - name: Run ingestion
+        working-directory: backend
+        run: uv run --no-sync python -m app.scripts.ingest "$PER_REPO_LIMIT"
