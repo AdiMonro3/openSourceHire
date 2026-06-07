@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import clsx from "clsx";
@@ -61,7 +61,7 @@ function languageDot(lang?: string | null) {
   return map[lang] ?? "bg-violet-400";
 }
 
-export default function PortfolioPage() {
+function PortfolioContent() {
   const [me, setMe] = useState<Me | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -244,6 +244,14 @@ export default function PortfolioPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function PortfolioPage() {
+  return (
+    <Suspense fallback={null}>
+      <PortfolioContent />
+    </Suspense>
   );
 }
 

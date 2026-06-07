@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { use, useCallback, useEffect, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import clsx from "clsx";
 import { api, ApiError } from "@/lib/api-client";
@@ -94,6 +94,18 @@ function matchTone(score?: number | null) {
 }
 
 export default function IssueDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <IssueDetailContent params={params} />
+    </Suspense>
+  );
+}
+
+function IssueDetailContent({
   params,
 }: {
   params: Promise<{ id: string }>;
