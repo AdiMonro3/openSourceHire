@@ -24,13 +24,12 @@ app = FastAPI(title="OpenSourceHire API", version="0.0.1")
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.session_secret,
-    https_only=False,
-    same_site="lax",
+    https_only=settings.cookie_secure,
+    same_site=settings.cookie_samesite,
 )
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=settings.cors_origins_list,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,7 +56,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     logger.exception("Unhandled error on %s %s", request.method, request.url.path)
     origin = request.headers.get("origin")
     headers: dict[str, str] = {}
-    if origin and origin in ("http://localhost:3000",):
+    if origin and origin in settings.cors_origins_list:
         headers["access-control-allow-origin"] = origin
         headers["access-control-allow-credentials"] = "true"
         headers["vary"] = "Origin"

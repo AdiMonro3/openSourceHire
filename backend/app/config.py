@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     session_secret: str = Field(default="change-me-please")
     backend_cors_origins: str = Field(default="http://localhost:3000")
 
+    # Session cookie behaviour. Local dev is same-site (localhost:3000 ->
+    # localhost:8000), so "lax" + no Secure works. In production the frontend
+    # and backend live on different domains, so the browser only sends the
+    # cookie cross-site when it is SameSite=None and Secure. Set
+    # COOKIE_SAMESITE=none and COOKIE_SECURE=true in prod.
+    cookie_samesite: str = Field(default="lax")
+    cookie_secure: bool = Field(default=False)
+
     resend_api_key: str = Field(default="")
     email_from: str = Field(default="onboarding@resend.dev")
 

@@ -1,0 +1,49 @@
+# Render Blueprint for the OpenSourceHire backend (free tier).
+# In Render: New > Blueprint > connect this repo. Secrets marked `sync: false`
+# are filled in the dashboard after the first deploy.
+services:
+  - type: web
+    name: osh-api
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      # --- non-secret config (safe to commit) ---
+      - key: ANTHROPIC_BASE_URL
+        value: https://api.z.ai/api/anthropic
+      - key: LLM_SONNET_MODEL
+        value: GLM-4.7-Flash
+      - key: LLM_HAIKU_MODEL
+        value: GLM-4.5-Flash
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: EMAIL_FROM
+        value: onboarding@resend.dev
+      # Render generates a strong random value once and keeps it stable.
+      - key: SESSION_SECRET
+        generateValue: true
+
+      # --- secrets / per-deploy URLs (set in the Render dashboard) ---
+      - key: ANTHROPIC_API_KEY        # your z.ai API key
+        sync: false
+      - key: VOYAGE_API_KEY
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_OAUTH_CALLBACK_URL # https://osh-api.onrender.com/auth/github/callback
+        sync: false
+      - key: DATABASE_URL             # Neon connection string (see DEPLOY.md)
+        sync: false
+      - key: REDIS_URL                # Upstash rediss:// URL
+        sync: false
+      - key: BACKEND_CORS_ORIGINS     # https://your-app.vercel.app
+        sync: false
+      - key: RESEND_API_KEY           # optional (email)
+        sync: false
